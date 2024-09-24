@@ -1,16 +1,15 @@
 plugins {
-	id 'org.springframework.boot' version '3.3.4'
-	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
 	id 'java'
+	id 'org.springframework.boot' version '3.3.4'
+	id 'io.spring.dependency-management' version '1.1.6'
 }
 
 group = 'com.inhatc'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = '17'
 
-configurations {
-	compileOnly {
-		extendsFrom annotationProcessor
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
 	}
 }
 
@@ -19,29 +18,9 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-web' // 스프링 부트 웹 (내장 톰캣 서버, 스프링 MVC, RESTful, ...)
-	implementation 'org.springframework.boot:spring-boot-starter-jdbc' // 스프링 부트 JDBC (데이터베이스 연동)
-	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3' // MyBatis 스프링 부트 스타터
-	implementation 'org.springframework.boot:spring-boot-starter-security' // 스프링 부트 시큐리티 (인증 및 권한 관리)
-	implementation 'org.springframework.boot:spring-boot-starter-validation' // 스프링 부트 밸리데이션 (데이터 유효성 검사)
-	implementation('org.springframework.boot:spring-boot-starter-oauth2-client') // 스프링 부트 OAuth2 클라이언트 (소셜 로그인)
-
-	implementation 'org.springframework.boot:spring-boot-starter-data-redis' // 스프링 부트 레디스 (분산 캐시)
-	implementation 'org.springframework.session:spring-session-data-redis' // 스프링 세션 레디스 (세션 관리)
-
-	implementation 'org.springframework.boot:spring-boot-starter-actuator' // 스프링 부트 액추에이터 (모니터링 및 관리 기능)
-
-	testImplementation 'org.springframework.boot:spring-boot-starter-test' // 스프링 부트 테스트
-	testImplementation 'org.springframework.security:spring-security-test' // 스프링 시큐리티 테스트
-	testImplementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter-test:3.0.3' // MyBatis 스프링 부트 테스트
-	testImplementation 'org.projectlombok:lombok' // 롬복 (코드 간소화)
-
-	testAnnotationProcessor 'org.projectlombok:lombok' // 롬복 (코드 간소화)
-
-	compileOnly 'org.projectlombok:lombok' // 롬복 (코드 간소화)
-	developmentOnly 'org.springframework.boot:spring-boot-devtools' // 스프링 부트 데브툴 (개발 도구)
-	runtimeOnly 'org.mariadb.jdbc:mariadb-java-client' // MariaDB JDBC 드라이버
-	annotationProcessor 'org.projectlombok:lombok' // 롬복 (코드 간소화)
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 tasks.named('test') {

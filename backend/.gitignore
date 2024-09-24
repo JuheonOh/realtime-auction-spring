@@ -1,23 +1,37 @@
-# Compiled class files
-*.class
-
-# Log files
-*.log
-
-# IntelliJ IDEA files
-.idea/
-
-# Eclipse files
-.classpath
-.project
-.settings/
-
-# Maven files
-target/
-
-# Gradle files
+HELP.md
+.gradle
 build/
-.gradle/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
 
-# Spring Boot generated files
-spring-boot-starter-*.jar
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
