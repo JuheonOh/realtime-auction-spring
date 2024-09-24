@@ -6,6 +6,7 @@ export default function HomePage() {
     { id: 1, name: "빈티지 롤렉스 시계", currentBid: 15000000, timeLeft: 7200, image: "images/placeholder.svg?height=300&width=400", category: "액세서리" },
     { id: 2, name: "현대 미술 걸작", currentBid: 50000000, timeLeft: 10800, image: "images/placeholder.svg?height=300&width=400", category: "예술" },
     { id: 3, name: "희귀 초판 도서", currentBid: 5000000, timeLeft: 3600, image: "images/placeholder.svg?height=300&width=400", category: "수집품" },
+    { id: 4, name: "디올 가방", currentBid: 3000000, timeLeft: 14400, image: "images/placeholder.svg?height=300&width=400", category: "패션" },
   ];
 
   const categories = ["액세서리", "예술", "수집품", "패션", "홈 & 가든", "쥬얼리", "테크놀로지", "자동차"];
@@ -14,7 +15,7 @@ export default function HomePage() {
     <main className="container mx-auto px-4 py-8">
       <section className="mb-12">
         <h2 className="text-2xl font-semibold mb-6">주목할 만한 경매</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {featuredAuctions.map((auction) => (
             <div key={auction.id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <img src={auction.image} alt={auction.name} className="w-full h-48 object-cover" />
