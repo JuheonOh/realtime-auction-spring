@@ -13,7 +13,7 @@ const mockAuctions = [
 
 const categories = ["All", "Accessories", "Art", "Collectibles", "Fashion", "Home & Garden", "Vehicles"];
 
-export default function Auction() {
+export default function AuctionPage() {
   const [auctions, setAuctions] = useState(mockAuctions);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");

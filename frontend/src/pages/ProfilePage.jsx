@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { User, Mail, Phone, MapPin, Clock, DollarSign, Settings, Lock, Bell } from "lucide-react";
 
-export default function Profile() {
+export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
 
   // 실제 구현에서는 이 데이터를 서버에서 가져와야 합니다.
