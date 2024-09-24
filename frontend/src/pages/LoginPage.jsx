@@ -41,7 +41,7 @@ export default function LoginPage() {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
-                <input id="email" name="email" type="email" autoComplete="email" required className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input id="email" name="email" type="email" autoComplete="email" required className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md py-1" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
             </div>
 
@@ -53,7 +53,7 @@ export default function LoginPage() {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
-                <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 sm:text-sm border-gray-300 rounded-md" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 sm:text-sm border-gray-300 rounded-md py-1" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <button type="button" className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
