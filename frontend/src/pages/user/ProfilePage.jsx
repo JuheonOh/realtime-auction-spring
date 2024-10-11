@@ -1,16 +1,33 @@
-import { useState } from "react";
-import { User, Mail, Phone, MapPin, Clock, DollarSign, Settings, Lock, Bell } from "lucide-react";
+import { Bell, Clock, DollarSign, Lock, Mail, Phone, Settings, User } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { fetchUser } from "../../api/UserAPI";
 
 export default function ProfilePage() {
+  const [user, setUser] = useState({});
+  const ACCESS_TOKEN = localStorage.getItem("accessToken");
   const [activeTab, setActiveTab] = useState("profile");
 
-  // 실제 구현에서는 이 데이터를 서버에서 가져와야 합니다.
-  const userData = {
-    name: "홍길동",
-    email: "hong@example.com",
-    phone: "010-1234-5678",
-    address: "서울특별시 강남구",
-    joinDate: "2023-01-01",
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (ACCESS_TOKEN) {
+      fetchUser()
+        .then((res) => {
+          setUser(res);
+        })
+        .catch((err) => {
+          console.log(err);
+          navigate("/user/profile")
+        });
+    } else {
+      navigate("/auth/login");
+    }
+  }, [ACCESS_TOKEN, navigate]);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/");
   };
 
   const auctionHistory = [
@@ -25,7 +42,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 min-h-screen">
       <h1 className="text-3xl font-bold mb-8">마이페이지</h1>
 
       <div className="flex flex-col md:flex-row gap-8">
@@ -35,8 +52,8 @@ export default function ProfilePage() {
             <div className="flex items-center space-x-4 mb-6">
               <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
               <div>
-                <h2 className="text-xl font-semibold">{userData.name}</h2>
-                <p className="text-gray-500">{userData.email}</p>
+                <h2 className="text-xl font-semibold">{user.ame}</h2>
+                <p className="text-gray-500">{user.email}</p>
               </div>
             </div>
             <nav>
@@ -53,7 +70,9 @@ export default function ProfilePage() {
                 설정
               </button>
             </nav>
-            <button className="w-full mt-4 py-2 px-4 bg-red-500 text-white rounded hover:bg-red-600 transition-colors">로그아웃</button>
+            <button className="w-full mt-4 py-2 px-4 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onClick={handleLogout}>
+              로그아웃
+            </button>
           </div>
         </div>
 
@@ -66,23 +85,19 @@ export default function ProfilePage() {
                 <div className="space-y-4">
                   <div className="flex items-center">
                     <User className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>{userData.name}</span>
+                    <span>{user.name}</span>
                   </div>
                   <div className="flex items-center">
                     <Mail className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>{userData.email}</span>
+                    <span>{user.email}</span>
                   </div>
                   <div className="flex items-center">
                     <Phone className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>{userData.phone}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <MapPin className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>{userData.address}</span>
+                    <span>{user.phone}</span>
                   </div>
                   <div className="flex items-center">
                     <Clock className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>가입일: {userData.joinDate}</span>
+                    <span>가입일: {new Date(user.createdAt).toLocaleString()}</span>
                   </div>
                 </div>
               </div>

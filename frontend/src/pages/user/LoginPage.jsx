@@ -1,16 +1,31 @@
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { login } from "../../api/AuthAPI";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // 여기에 로그인 로직을 구현합니다.
-    console.log("로그인 시도:", email, password);
+
+    login({ email, password })
+      .then((res) => {
+        localStorage.clear();
+        localStorage.setItem("tokenType", res.tokenType);
+        localStorage.setItem("accessToken", res.accessToken);
+        localStorage.setItem("refreshToken", res.refreshToken);
+        navigate("/");
+      })
+      .catch((err) => {
+        if (err.response.data.status === 401) {
+          alert(err.response.data.message);
+        }
+      });
   };
 
   return (
@@ -24,7 +39,7 @@ export default function LoginPage() {
         </h2>
         <p className="mt-2 text-center text-md text-gray-600">
           계정이 없으신가요?{" "}
-          <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+          <Link to="/auth/signup" className="font-medium text-blue-600 hover:text-blue-500">
             회원가입
           </Link>
         </p>

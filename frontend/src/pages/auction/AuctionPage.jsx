@@ -74,15 +74,15 @@ export default function AuctionPage() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredAndSortedAuctions.map((auction) => (
-          <div key={auction.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div key={auction.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col justify-between">
             <img src={auction.image} alt={auction.name} className="w-full h-48 object-cover" />
             <div className="p-4">
               <h2 className="text-xl font-semibold mb-2">{auction.name}</h2>
               <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mb-2">{auction.category}</span>
               <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center">
+                <div className="flex items-center"> 
                   <DollarSign className="w-5 h-5 text-green-500 mr-1" />
                   <span className="font-bold">{auction.currentBid.toLocaleString()}원</span>
                 </div>

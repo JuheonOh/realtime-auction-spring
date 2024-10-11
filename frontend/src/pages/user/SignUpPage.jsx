@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { signUp } from "../../api/AuthAPI";
 
 export default function SignUpPage() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
     phone: "",
+    agreeTerms: false,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -21,10 +25,29 @@ export default function SignUpPage() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // 여기에 회원가입 로직을 구현합니다.
-    console.log("회원가입 시도:", formData);
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    if (formData.agreeTerms === false) {
+      alert("이용약관과 개인정보처리방침에 동의해주세요.");
+      return;
+    }
+
+    formData.phone = formData.phone.replace("-", "");
+
+    signUp(formData)
+      .then((res) => {
+        console.log(res);
+        // navigate("/login");
+      })
+      .catch((err) => {
+        alert(err.response.data.message);
+      });
   };
 
   return (
@@ -104,8 +127,8 @@ export default function SignUpPage() {
             </div>
 
             <div className="flex items-center">
-              <input id="agree-terms" name="agree-terms" type="checkbox" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" required />
-              <label htmlFor="agree-terms" className="ml-2 block text-sm text-gray-900">
+              <input id="agreeTerms" name="agreeTerms" type="checkbox" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" required onChange={handleChange} />
+              <label htmlFor="agreeTerms" className="ml-2 block text-sm text-gray-900">
                 <span>
                   <Link to="/terms" className="font-medium text-blue-600 hover:text-blue-500">
                     이용약관
@@ -160,7 +183,7 @@ export default function SignUpPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               이미 계정이 있으신가요?{" "}
-              <Link to="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              <Link to="/auth/login" className="font-medium text-blue-600 hover:text-blue-500">
                 로그인
               </Link>
             </p>

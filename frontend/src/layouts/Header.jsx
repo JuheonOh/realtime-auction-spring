@@ -1,11 +1,12 @@
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { Search, User, Menu, X } from "lucide-react";
+import { Menu, Search, User, X } from "lucide-react";
 import NotificationComponent from "../components/Notification";
 
 export default function Header() {
+  const ACCESS_TOKEN = localStorage.getItem("accessToken");
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -23,10 +24,10 @@ export default function Header() {
             <Link to="/auction" className="text-gray-600 hover:text-blue-600 transition-colors">
               경매 목록
             </Link>
-            <Link to="#" className="text-gray-600 hover:text-blue-600 transition-colors">
+            <Link to="/auction/sell" className="text-gray-600 hover:text-blue-600 transition-colors">
               판매하기
             </Link>
-            <Link to="/profile" className="text-gray-600 hover:text-blue-600 transition-colors">
+            <Link to="/user/profile" className="text-gray-600 hover:text-blue-600 transition-colors">
               마이페이지
             </Link>
           </div>
@@ -36,11 +37,19 @@ export default function Header() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
             <NotificationComponent />
-            <Link to="/login">
-              <button className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors">
-                <User className="w-6 h-6 text-gray-600" />
-              </button>
-            </Link>
+            {ACCESS_TOKEN ? (
+              <Link to="/user/profile">
+                <button className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors">
+                  <User className="w-6 h-6 text-gray-600" />
+                </button>
+              </Link>
+            ) : (
+              <Link to="/auth/login">
+                <button className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors">
+                  <User className="w-6 h-6 text-gray-600" />
+                </button>
+              </Link>
+            )}
             <button className="md:hidden p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors" onClick={() => setIsMenuOpen(!isMenuOpen)}>
               {isMenuOpen ? <X className="w-6 h-6 text-gray-600" /> : <Menu className="w-6 h-6 text-gray-600" />}
             </button>
