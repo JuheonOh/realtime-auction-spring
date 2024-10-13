@@ -1,6 +1,6 @@
-package com.inhatc.auction.dto.auth;
+package com.inhatc.auction.dto;
 
-import com.inhatc.auction.domain.auth.Auth;
+import com.inhatc.auction.domain.Auth;
 import lombok.*;
 
 @Getter

@@ -1,6 +1,7 @@
-package com.inhatc.auction.config.auth;
+package com.inhatc.auction.config.jwt;
 
-import com.inhatc.auction.domain.auth.User;
+import com.inhatc.auction.domain.User;
+import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -35,9 +36,7 @@ public class CustomUserDetails implements UserDetails {
     }
 
     @Override
-    public String getUsername() {
-        return user.getName();
-    }
+    public String getUsername() { return user.getName(); }
 
     public String getPhone() {
         return user.getPhone();

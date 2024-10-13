@@ -1,18 +1,12 @@
-package com.inhatc.auction.dto.auth;
+package com.inhatc.auction.dto;
 
 import com.inhatc.auction.common.Role;
-import com.inhatc.auction.domain.auth.User;
+import com.inhatc.auction.domain.User;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+@Data
 public class UserRequestDTO {
     @NotNull(message = "이메일 입력은 필수입니다.")
     @Email

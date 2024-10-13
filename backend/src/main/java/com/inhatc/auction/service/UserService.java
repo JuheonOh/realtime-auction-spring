@@ -1,11 +1,10 @@
-package com.inhatc.auction.service.auth;
+package com.inhatc.auction.service;
 
-import com.inhatc.auction.domain.auth.User;
-import com.inhatc.auction.dto.auth.UserRequestDTO;
-import com.inhatc.auction.dto.auth.UserResponseDTO;
-import com.inhatc.auction.repository.auth.UserRepository;
+import com.inhatc.auction.domain.User;
+import com.inhatc.auction.dto.UserRequestDTO;
+import com.inhatc.auction.dto.UserResponseDTO;
+import com.inhatc.auction.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,9 +12,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-
-
 
     /**
      * User 조회

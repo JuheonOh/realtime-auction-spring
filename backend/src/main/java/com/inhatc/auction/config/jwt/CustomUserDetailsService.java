@@ -1,7 +1,7 @@
-package com.inhatc.auction.config.auth;
+package com.inhatc.auction.config.jwt;
 
-import com.inhatc.auction.domain.auth.User;
-import com.inhatc.auction.repository.auth.UserRepository;
+import com.inhatc.auction.domain.User;
+import com.inhatc.auction.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;

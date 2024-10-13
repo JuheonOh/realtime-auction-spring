@@ -1,6 +1,7 @@
-package com.inhatc.auction.dto.auth;
+package com.inhatc.auction.dto;
 
-import com.inhatc.auction.domain.auth.User;
+import com.inhatc.auction.domain.User;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,7 +16,9 @@ public class UserResponseDTO {
     private String phone;
     private String role;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
+    @Builder
     public UserResponseDTO(User entity) {
         this.id = entity.getId();
         this.email = entity.getEmail();
@@ -24,6 +27,6 @@ public class UserResponseDTO {
         // Enum -> String
         this.role = entity.getRole().name();
         this.createdAt = entity.getCreatedAt();
+        this.updatedAt = entity.getUpdatedAt();
     }
-
 }

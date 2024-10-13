@@ -1,6 +1,6 @@
-package com.inhatc.auction.repository.auth;
+package com.inhatc.auction.repository;
 
-import com.inhatc.auction.domain.auth.User;
+import com.inhatc.auction.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
