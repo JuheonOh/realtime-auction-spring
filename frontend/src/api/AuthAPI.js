@@ -1,26 +1,58 @@
 import axios from "axios";
 
-const TOKEN_TYPE = localStorage.getItem("tokenType");
-let ACCESS_TOKEN = localStorage.getItem("accessToken");
-
 export const AuthApi = axios.create({
   baseURL: "http://localhost:8080",
   headers: {
     "Content-Type": "application/json",
-    Authorization: `${TOKEN_TYPE} ${ACCESS_TOKEN}`,
   },
 });
 
+// 요청 인터셉터 추가
+AuthApi.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("accessToken");
+    const tokenType = localStorage.getItem("tokenType");
+
+    if (token) {
+      config.headers["Authorization"] = `${tokenType} ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 export const login = async ({ email, password }) => {
-  const data = { email, password };
-  const response = await AuthApi.post("/api/auth/login", data);
-  return response.data;
+  try {
+    const response = await AuthApi.post("/api/auth/login", { email, password });
+
+    // 로그인 성공 시 토큰 저장
+    localStorage.setItem("tokenType", response.data.tokenType);
+    localStorage.setItem("accessToken", response.data.accessToken);
+    localStorage.setItem("refreshToken", response.data.refreshToken);
+
+    return response.data;
+  } catch (error) {
+    console.error("Login failed:", error);
+    throw error;
+  }
 };
 
 export const signUp = async (formData) => {
-  formData.agreeTerms = formData.agreeTerms === "on" ? true : false;
+  try {
+    formData.agreeTerms = formData.agreeTerms === "on";
+    const response = await AuthApi.post("/api/auth/signup", formData);
 
-  const data = formData;
-  const response = await AuthApi.post("/api/auth/signup", data);
-  return response.data;
+    return response.data;
+  } catch (error) {
+    console.error("Signup failed:", error);
+    throw error;
+  }
+};
+
+// 로그아웃 함수 추가
+export const logout = () => {
+  localStorage.removeItem("tokenType");
+  localStorage.removeItem("accessToken");
+  localStorage.removeItem("refreshToken");
 };

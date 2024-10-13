@@ -42,8 +42,7 @@ export default function SignUpPage() {
 
     signUp(formData)
       .then((res) => {
-        console.log(res);
-        // navigate("/login");
+        navigate("/auth/login");
       })
       .catch((err) => {
         alert(err.response.data.message);

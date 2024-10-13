@@ -14,14 +14,11 @@ export default function ProfilePage() {
     if (ACCESS_TOKEN) {
       fetchUser()
         .then((res) => {
-          setUser(res);
+          setUser(res.data);
         })
         .catch((err) => {
           console.log(err);
-          navigate("/user/profile")
         });
-    } else {
-      navigate("/auth/login");
     }
   }, [ACCESS_TOKEN, navigate]);
 

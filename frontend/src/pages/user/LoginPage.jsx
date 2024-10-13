@@ -15,16 +15,17 @@ export default function LoginPage() {
 
     login({ email, password })
       .then((res) => {
-        localStorage.clear();
         localStorage.setItem("tokenType", res.tokenType);
         localStorage.setItem("accessToken", res.accessToken);
         localStorage.setItem("refreshToken", res.refreshToken);
         navigate("/");
       })
       .catch((err) => {
-        if (err.response.data.status === 401) {
+        if(err.response.data.message){
           alert(err.response.data.message);
         }
+
+        console.log(err);
       });
   };
 

@@ -9,7 +9,7 @@ import ContactPage from "../pages/common/ContactPage";
 
 import AuctionPage from "../pages/auction/AuctionPage";
 import AuctionDetailPage from "../pages/auction/AuctionDetailPage";
-import AuctionSellItemPage from "../pages/auction/AuctionSellItemPage";
+import AuctionAddItemPage from "../pages/auction/AuctionAddItemPage";
 
 import ProfilePage from "../pages/user/ProfilePage";
 import LoginPage from "../pages/user/LoginPage";
@@ -26,7 +26,7 @@ export default function Router() {
           <Route path="/" element={<HomePage />} />
           <Route path="/auction" element={<AuctionPage />} />
           <Route path="/auction/:id" element={<AuctionDetailPage />} />
-          <Route path="/auction/sell" element={<AuctionSellItemPage />} />
+          <Route path="/auction/sell" element={<AuctionAddItemPage />} />
           <Route path="/user/profile" element={<ProfilePage />} />
           <Route path="/contact" element={<ContactPage />} />
         </Route>

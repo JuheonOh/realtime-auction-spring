@@ -1,63 +1,75 @@
 import axios from "axios";
 
-const TOKEN_TYPE = localStorage.getItem("tokenType");
-let ACCESS_TOKEN = localStorage.getItem("accessToken");
-let REFRESH_TOKEN = localStorage.getItem("refreshToken");
+const BASE_URL = "http://localhost:8080";
+const TOKEN_TYPE = "Bearer";
 
-// CREATE CUSTOM AXIOS INSTANCE
+// API 인스턴스 생성
 export const UserApi = axios.create({
-  baseURL: "http://localhost:8080",
+  baseURL: BASE_URL,
   headers: {
     "Content-Type": "application/json",
-    Authorization: `${TOKEN_TYPE} ${ACCESS_TOKEN}`,
-    REFRESH_TOKEN: REFRESH_TOKEN,
   },
 });
+
+// 토큰 관리 함수
+const getAccessToken = () => localStorage.getItem("accessToken");
+const getRefreshToken = () => localStorage.getItem("refreshToken");
+const setAccessToken = (token) => localStorage.setItem("accessToken", token);
+
+// 요청 인터셉터: 매 요청마다 최신 토큰 사용
+UserApi.interceptors.request.use(
+  (config) => {
+    const token = getAccessToken();
+    if (token) {
+      config.headers["Authorization"] = `${TOKEN_TYPE} ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 // 토큰 갱신
 const refreshAccessToken = async () => {
   try {
-    const response = await UserApi.get("/api/auth/refresh");
-    ACCESS_TOKEN = response.data;
-    localStorage.setItem("accessToken", ACCESS_TOKEN);
-    UserApi.defaults.headers.Authorization = `${TOKEN_TYPE} ${ACCESS_TOKEN}`;
-  } catch (err) {
-    console.error("Failed to refresh token:", err);
+    const response = await axios.get(`${BASE_URL}/api/auth/refresh`, {
+      headers: {
+        REFRESH_TOKEN: getRefreshToken(),
+      },
+    });
+
+    const newAccessToken = response.data.accessToken;
+    setAccessToken(newAccessToken);
+    return newAccessToken;
+  } catch (error) {
+    if(error.response.status === 403) {
+      localStorage.clear();
+      window.location.replace("/auth/login");
+    }
   }
 };
 
-// 토큰 유효성 검사
+// 응답 인터셉터: 토큰 만료 시 갱신 및 재요청
 UserApi.interceptors.response.use(
-  (res) => {
-    return res;
-  },
-  async (err) => {
-    const originalRequest = err.config;
-
-    if (err.response.status === 500 && !originalRequest._retry) {
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      await refreshAccessToken();
-      return UserApi(originalRequest);
-    }
+      try {
+        const newAccessToken = await refreshAccessToken();
 
-    return Promise.reject(err);
+        originalRequest.headers["Authorization"] = `${TOKEN_TYPE} ${newAccessToken}`;
+
+        return UserApi(originalRequest);
+      } catch (refreshError) {
+        return Promise.reject(refreshError);
+      }
+    }
+    return Promise.reject(error);
   }
 );
 
-// 회원조회 API
-export const fetchUser = async () => {
-  const response = await UserApi.get("/api/user");
-  return response.data;
-};
-
-// 회원정보 수정 API
-export const updateUser = async (formData) => {
-  const response = await UserApi.put("/api/user", formData);
-  return response.data;
-};
-
-// 회원탈퇴 API
-export const deleteUser = async () => {
-  const response = await UserApi.delete("/api/user");
-  return response.data;
-};
+// API 함수들
+export const fetchUser = () => UserApi.get(`/api/user`);
+export const updateUser = (data) => UserApi.put(`/api/user`, data);
+export const deleteUser = () => UserApi.delete(`/api/user`);
