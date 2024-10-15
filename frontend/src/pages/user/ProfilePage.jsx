@@ -1,31 +1,16 @@
 import { Bell, Clock, DollarSign, Lock, Mail, Phone, Settings, User } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { fetchUser } from "../../api/UserAPI";
+import { logout } from "../../apis/AuthAPI";
+import { LOGOUT } from "../../redux/store/User";
 
 export default function ProfilePage() {
-  const [user, setUser] = useState({});
-  const ACCESS_TOKEN = localStorage.getItem("accessToken");
   const [activeTab, setActiveTab] = useState("profile");
 
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (ACCESS_TOKEN) {
-      fetchUser()
-        .then((res) => {
-          setUser(res.data);
-        })
-        .catch((err) => {
-          console.log(err);
-        });
-    }
-  }, [ACCESS_TOKEN, navigate]);
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
-  };
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.user.info);
 
   const auctionHistory = [
     { id: 1, name: "Vintage Watch", bid: 1500000, status: "낙찰", date: "2023-06-15" },
@@ -38,6 +23,12 @@ export default function ProfilePage() {
     { id: 2, name: "Luxury Handbag", currentBid: 2500000, endDate: "2023-06-30" },
   ];
 
+  const handleLogout = () => {
+    logout();
+    dispatch(LOGOUT());
+    navigate("/");
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 min-h-screen">
       <h1 className="text-3xl font-bold mb-8">마이페이지</h1>
@@ -49,7 +40,7 @@ export default function ProfilePage() {
             <div className="flex items-center space-x-4 mb-6">
               <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
               <div>
-                <h2 className="text-xl font-semibold">{user.ame}</h2>
+                <h2 className="text-xl font-semibold">{user.name}</h2>
                 <p className="text-gray-500">{user.email}</p>
               </div>
             </div>
@@ -90,7 +81,7 @@ export default function ProfilePage() {
                   </div>
                   <div className="flex items-center">
                     <Phone className="w-5 h-5 mr-2 text-gray-500" />
-                    <span>{user.phone}</span>
+                    <span>{user.phone.substring(0, 3) + "-****-" + user.phone.substring(7)}</span>
                   </div>
                   <div className="flex items-center">
                     <Clock className="w-5 h-5 mr-2 text-gray-500" />

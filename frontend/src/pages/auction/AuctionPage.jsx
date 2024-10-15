@@ -1,17 +1,16 @@
-import { useState, useEffect } from "react";
 import { Bell, Clock, DollarSign, Heart, Search, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getCategoryList } from "../../apis/AuctionAPI";
 
 // 실제 구현에서는 이 부분을 서버로부터 받아오는 로직으로 대체해야 합니다.
 const mockAuctions = [
-  { id: 1, name: "Vintage Watch", currentBid: 1500, timeLeft: 120, image: "/images/placeholder.svg", category: "Accessories", immediatePurchasePrice: 3000 },
-  { id: 2, name: "Modern Art Painting", currentBid: 5000, timeLeft: 300, image: "/images/placeholder.svg", category: "Art", immediatePurchasePrice: 10000 },
-  { id: 3, name: "Rare Coin Collection", currentBid: 2000, timeLeft: 600, image: "/images/placeholder.svg", category: "Collectibles" },
-  { id: 4, name: "Antique Furniture", currentBid: 3500, timeLeft: 450, image: "/images/placeholder.svg", category: "Home & Garden", immediatePurchasePrice: 7000 },
-  { id: 5, name: "Luxury Handbag", currentBid: 2500, timeLeft: 180, image: "/images/placeholder.svg", category: "Fashion" },
-  { id: 6, name: "Classic Car", currentBid: 15000, timeLeft: 900, image: "/images/placeholder.svg", category: "Vehicles", immediatePurchasePrice: 30000 },
+  { id: 1, name: "Vintage Watch", currentBid: 1500, timeLeft: 120, image: "/images/placeholder.svg", category: 1, immediatePurchasePrice: 3000 },
+  { id: 2, name: "Modern Art Painting", currentBid: 5000, timeLeft: 300, image: "/images/placeholder.svg", category: 2, immediatePurchasePrice: 10000 },
+  { id: 3, name: "Rare Coin Collection", currentBid: 2000, timeLeft: 600, image: "/images/placeholder.svg", category: 3 },
+  { id: 4, name: "Antique Furniture", currentBid: 3500, timeLeft: 450, image: "/images/placeholder.svg", category: 5, immediatePurchasePrice: 7000 },
+  { id: 5, name: "Luxury Handbag", currentBid: 2500, timeLeft: 180, image: "/images/placeholder.svg", category: 4 },
+  { id: 6, name: "Classic Car", currentBid: 15000, timeLeft: 900, image: "/images/placeholder.svg", category: 8, immediatePurchasePrice: 30000 },
 ];
-
-const categories = ["All", "Accessories", "Art", "Collectibles", "Fashion", "Home & Garden", "Vehicles"];
 
 export default function AuctionPage() {
   const [auctions, setAuctions] = useState(mockAuctions);
@@ -19,7 +18,16 @@ export default function AuctionPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState("timeLeft");
 
+  const [categoryList, setCategoryList] = useState([]);
+
+  const fetchCategoryList = async () => {
+    const categoryList = await getCategoryList();
+    setCategoryList(categoryList);
+  }
+
   useEffect(() => {
+    fetchCategoryList();
+
     // 실시간 업데이트를 시뮬레이션합니다.
     const timer = setInterval(() => {
       setAuctions((prevAuctions) =>
@@ -62,9 +70,10 @@ export default function AuctionPage() {
           <input type="text" className="w-full pl-10 pr-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="경매 상품 검색..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
         <select className="px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
+          <option value="All">전체</option>
+          {categoryList.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
             </option>
           ))}
         </select>
@@ -82,7 +91,7 @@ export default function AuctionPage() {
               <h2 className="text-xl font-semibold mb-2">{auction.name}</h2>
               <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mb-2">{auction.category}</span>
               <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center"> 
+                <div className="flex items-center">
                   <DollarSign className="w-5 h-5 text-green-500 mr-1" />
                   <span className="font-bold">{auction.currentBid.toLocaleString()}원</span>
                 </div>

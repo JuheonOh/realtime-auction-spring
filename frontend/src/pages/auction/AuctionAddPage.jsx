@@ -1,34 +1,41 @@
 import { Upload, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { useSelector } from "react-redux";
+import { addAuction, getCategoryList } from "../../apis/AuctionAPI";
+import { useNavigate } from "react-router-dom";
 
-export default function AuctionSellItemPage() {
+export default function AuctionAddPage() {
+  const navigate = useNavigate();
+  const user = useSelector((state) => state.user.info);
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    category: "",
-    startingPrice: 0,
-    immediatePrice: 0,
-    duration: "3",
+    categoryId: undefined,
+    startPrice: 0,
+    buyNowPrice: 0,
+    auctionDuration: "3",
     images: [],
   });
 
   const [previewImages, setPreviewImages] = useState([]);
+  const [categoryList, setCategoryList] = useState([]);
 
-  const onDrop = useCallback((acceptedFiles) => {
-    handleImageUpload(acceptedFiles);
+  // 카테고리 목록 가져오기
+  const fetchCategoryList = async () => {
+    const categoryList = await getCategoryList();
+    setCategoryList(categoryList);
+  };
+
+  // 카테고리 목록 가져오기
+  useEffect(() => {
+    fetchCategoryList();
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      "image/*": [".jpeg", ".jpg", ".png", ".gif"],
-    },
-    maxSize: 10 * 1024 * 1024, // 10MB
-  });
-
+  // 입력 필드 변경 처리
   const handleChange = (e) => {
-    if (e.target.name === "startingPrice" || e.target.name === "immediatePrice") {
+    if (e.target.name === "startPrice" || e.target.name === "buyNowPrice") {
       if (e.target.value < 0) {
         return;
       }
@@ -44,6 +51,21 @@ export default function AuctionSellItemPage() {
     }));
   };
 
+  // 이미지 업로드 드래그 앤 드롭
+  const onDrop = useCallback((acceptedFiles) => {
+    handleImageUpload(acceptedFiles);
+  }, []);
+
+  // 이미지 업로드 드래그 앤 드롭
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "image/*": [".jpeg", ".jpg", ".png", ".gif"],
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB
+  });
+
+  // 이미지 업로드
   const handleImageUpload = (files) => {
     const newImages = files.filter((file) => file.type.startsWith("image/"));
     setFormData((prevData) => ({
@@ -55,6 +77,7 @@ export default function AuctionSellItemPage() {
     setPreviewImages((prevImages) => [...prevImages, ...newPreviewImages]);
   };
 
+  // 이미지 삭제
   const removeImage = (index) => {
     setFormData((prevData) => ({
       ...prevData,
@@ -63,11 +86,35 @@ export default function AuctionSellItemPage() {
     setPreviewImages((prevImages) => prevImages.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // 여기에 폼 제출 로직을 구현합니다.
-    console.log("제출된 데이터:", formData);
-    // 실제 구현에서는 서버로 데이터를 전송하고 응답을 처리해야 합니다.
+
+    const auctionData = {
+      userId: user.id,
+      title: formData.title,
+      description: formData.description,
+      categoryId: parseInt(formData.categoryId),
+      startPrice: parseInt(formData.startPrice.replace(/,/g, "")),
+      buyNowPrice: formData.buyNowPrice === "" ? 0 : parseInt(formData.buyNowPrice.replace(/,/g, "")),
+      auctionDuration: parseInt(formData.auctionDuration),
+      images: formData.images,
+    };
+
+    if (auctionData.buyNowPrice !== 0 && auctionData.buyNowPrice < auctionData.startPrice) {
+      alert("즉시 구매 가격은 시작 가격보다 높아야 합니다.");
+      return;
+    }
+
+    try {
+      const response = await addAuction(auctionData);
+      
+      if (response.status === 201) {
+        alert("경매 상품이 등록되었습니다.");
+        navigate("/auction");
+      }
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   return (
@@ -95,37 +142,36 @@ export default function AuctionSellItemPage() {
                 <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
                   카테고리
                 </label>
-                <select id="category" name="category" value={formData.category} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select id="category" name="categoryId" value={formData.categoryId} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="">카테고리 선택</option>
-                  <option value="electronics">전자제품</option>
-                  <option value="fashion">패션</option>
-                  <option value="home">홈 & 리빙</option>
-                  <option value="sports">스포츠 & 레저</option>
-                  <option value="books">도서 & 음반</option>
-                  <option value="etc">기타</option>
+                  {categoryList.map((category, index) => (
+                    <option key={index} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="startingPrice" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="startPrice" className="block text-sm font-medium text-gray-700 mb-1">
                     시작 가격
                   </label>
-                  <input type="text" id="startingPrice" name="startingPrice" value={formData.startingPrice} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input type="text" id="startPrice" name="startPrice" value={formData.startPrice} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label htmlFor="immediatePrice" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="buyNowPrice" className="block text-sm font-medium text-gray-700 mb-1">
                     즉시 구매 가격 (선택사항)
                   </label>
-                  <input type="text" id="immediatePrice" name="immediatePrice" value={formData.immediatePrice} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input type="text" id="buyNowPrice" name="buyNowPrice" value={formData.buyNowPrice} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="auctionDuration" className="block text-sm font-medium text-gray-700 mb-1">
                   경매 기간
                 </label>
-                <select id="duration" name="duration" value={formData.duration} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <select id="auctionDuration" name="auctionDuration" value={formData.duration} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                   <option value="3">3일</option>
                   <option value="5">5일</option>
                   <option value="7">7일</option>

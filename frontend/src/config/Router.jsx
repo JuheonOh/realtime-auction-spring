@@ -3,33 +3,39 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import Layout from "../layouts/Layout";
 
+import ContactPage from "../pages/common/ContactPage";
 import HomePage from "../pages/common/HomePage";
 import NotFoundPage from "../pages/common/NotFoundPage";
-import ContactPage from "../pages/common/ContactPage";
 
-import AuctionPage from "../pages/auction/AuctionPage";
+import AuctionAddPage from "../pages/auction/AuctionAddPage";
 import AuctionDetailPage from "../pages/auction/AuctionDetailPage";
-import AuctionAddItemPage from "../pages/auction/AuctionAddItemPage";
+import AuctionPage from "../pages/auction/AuctionPage";
 
-import ProfilePage from "../pages/user/ProfilePage";
 import LoginPage from "../pages/user/LoginPage";
+import ProfilePage from "../pages/user/ProfilePage";
 import SignUpPage from "../pages/user/SignUpPage";
+import Private from "./Private";
 
 export default function Router() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/auth/login" element={<LoginPage />} />
-        <Route path="/auth/signup" element={<SignUpPage />} />
+        <Route element={<Private />}>
+          <Route element={<Layout />}>
+            <Route path="/user/profile" element={<ProfilePage />} />
+            <Route path="/auction/sell" element={<AuctionAddPage />} />
+          </Route>
+        </Route>
 
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/auction" element={<AuctionPage />} />
           <Route path="/auction/:id" element={<AuctionDetailPage />} />
-          <Route path="/auction/sell" element={<AuctionAddItemPage />} />
-          <Route path="/user/profile" element={<ProfilePage />} />
           <Route path="/contact" element={<ContactPage />} />
         </Route>
+
+        <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/auth/signup" element={<SignUpPage />} />
 
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

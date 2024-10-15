@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearCookie, getCookie, setCookie } from "../storage/Cookie";
 
 const BASE_URL = "http://localhost:8080";
 const TOKEN_TYPE = "Bearer";
@@ -11,17 +12,12 @@ export const UserApi = axios.create({
   },
 });
 
-// 토큰 관리 함수
-const getAccessToken = () => localStorage.getItem("accessToken");
-const getRefreshToken = () => localStorage.getItem("refreshToken");
-const setAccessToken = (token) => localStorage.setItem("accessToken", token);
-
 // 요청 인터셉터: 매 요청마다 최신 토큰 사용
 UserApi.interceptors.request.use(
   (config) => {
-    const token = getAccessToken();
-    if (token) {
-      config.headers["Authorization"] = `${TOKEN_TYPE} ${token}`;
+    const accessToken = getCookie("accessToken");
+    if (accessToken) {
+      config.headers["Authorization"] = `${TOKEN_TYPE} ${accessToken}`;
     }
     return config;
   },
@@ -31,18 +27,20 @@ UserApi.interceptors.request.use(
 // 토큰 갱신
 const refreshAccessToken = async () => {
   try {
+    const refreshToken = getCookie("refreshToken");
     const response = await axios.get(`${BASE_URL}/api/auth/refresh`, {
       headers: {
-        REFRESH_TOKEN: getRefreshToken(),
+        REFRESH_TOKEN: refreshToken,
       },
     });
 
     const newAccessToken = response.data.accessToken;
-    setAccessToken(newAccessToken);
+    setCookie("accessToken", newAccessToken);
+
     return newAccessToken;
   } catch (error) {
-    if(error.response.status === 403) {
-      localStorage.clear();
+    if (error.response.status === 403) {
+      clearCookie();
       window.location.replace("/auth/login");
     }
   }
@@ -55,11 +53,10 @@ UserApi.interceptors.response.use(
     const originalRequest = error.config;
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
+
       try {
         const newAccessToken = await refreshAccessToken();
-
         originalRequest.headers["Authorization"] = `${TOKEN_TYPE} ${newAccessToken}`;
-
         return UserApi(originalRequest);
       } catch (refreshError) {
         return Promise.reject(refreshError);
@@ -69,7 +66,4 @@ UserApi.interceptors.response.use(
   }
 );
 
-// API 함수들
-export const fetchUser = () => UserApi.get(`/api/user`);
-export const updateUser = (data) => UserApi.put(`/api/user`, data);
-export const deleteUser = () => UserApi.delete(`/api/user`);
+export const fetchUser = () => UserApi.get(`/api/users`);

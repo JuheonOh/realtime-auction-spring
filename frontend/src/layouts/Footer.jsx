@@ -45,7 +45,7 @@ export default function Footer() {
             </div>
           </div>
           <div className="mt-8 text-center text-gray-400">
-            <p>&copy; Copyright 2023 경매나라. All rights reserved. Designed by v0.dev</p>
+            <p>&copy; Copyright 2024 경매나라. All rights reserved. Designed by v0.dev</p>
           </div>
         </div>
       </footer>

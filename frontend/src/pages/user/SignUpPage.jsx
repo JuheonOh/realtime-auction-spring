@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { signUp } from "../../api/AuthAPI";
+import { signUp } from "../../apis/AuthAPI";
 
 export default function SignUpPage() {
   const navigate = useNavigate();

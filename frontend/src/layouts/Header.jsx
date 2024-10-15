@@ -1,14 +1,14 @@
+import { Menu, Search, User, X } from "lucide-react";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-
-import { Menu, Search, User, X } from "lucide-react";
 import NotificationComponent from "../components/Notification";
+import { useSelector } from "react-redux";
 
 export default function Header() {
-  const ACCESS_TOKEN = localStorage.getItem("accessToken");
-
   const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const isAuthenticated = useSelector((state) => state.user.authenticated);
 
   return (
     <header className="bg-white shadow">
@@ -37,7 +37,7 @@ export default function Header() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
             <NotificationComponent />
-            {ACCESS_TOKEN ? (
+            {isAuthenticated ? (
               <Link to="/user/profile">
                 <button className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors">
                   <User className="w-6 h-6 text-gray-600" />

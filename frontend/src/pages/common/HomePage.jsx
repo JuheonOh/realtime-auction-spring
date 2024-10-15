@@ -1,4 +1,6 @@
 import { Clock, DollarSign } from "lucide-react";
+import { getCategoryList } from "../../apis/AuctionAPI";
+import { useEffect, useState } from "react";
 
 export default function HomePage() {
   // 실제 구현에서는 이 데이터를 서버에서 가져와야 합니다.
@@ -8,8 +10,18 @@ export default function HomePage() {
     { id: 3, name: "희귀 초판 도서", currentBid: 5000000, timeLeft: 3600, image: "images/placeholder.svg?height=300&width=400", category: "수집품" },
     { id: 4, name: "디올 가방", currentBid: 3000000, timeLeft: 14400, image: "images/placeholder.svg?height=300&width=400", category: "패션" },
   ];
+  
+  const [categoryList, setCategoryList] = useState([]);
 
-  const categories = ["액세서리", "예술", "수집품", "패션", "홈 & 가든", "쥬얼리", "테크놀로지", "자동차"];
+  const fetchCategoryList = async () => {
+    const categoryList = await getCategoryList();
+    setCategoryList(categoryList);
+  }
+
+  useEffect(() => {
+    fetchCategoryList();
+  }, []);
+
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -43,9 +55,9 @@ export default function HomePage() {
       <section className="mb-12">
         <h2 className="text-2xl font-semibold mb-6">카테고리</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {categories.map((category) => (
-            <button key={category} className="bg-white hover:bg-gray-50 border border-gray-200 rounded-lg p-4 text-center transition-colors">
-              {category}
+          {categoryList.map((category) => (
+            <button key={category.id} className="bg-white hover:bg-gray-50 border border-gray-200 rounded-lg p-4 text-center transition-colors">
+              {category.name}
             </button>
           ))}
         </div>

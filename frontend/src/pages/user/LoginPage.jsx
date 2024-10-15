@@ -1,32 +1,38 @@
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useState } from "react";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-import { login } from "../../api/AuthAPI";
+import { login } from "../../apis/AuthAPI";
+import { SET_ACCESS_TOKEN } from "../../redux/store/User";
+import { setCookie } from "../../storage/Cookie";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
+  
+  const dispatch = useDispatch();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    login({ email, password })
-      .then((res) => {
-        localStorage.setItem("tokenType", res.tokenType);
-        localStorage.setItem("accessToken", res.accessToken);
-        localStorage.setItem("refreshToken", res.refreshToken);
-        navigate("/");
-      })
-      .catch((err) => {
-        if(err.response.data.message){
-          alert(err.response.data.message);
-        }
+    try {
+      const res = await login({ email, password });
+      setCookie("tokenType", res.data.tokenType);
+      setCookie("refreshToken", res.data.refreshToken);
+      setCookie("accessToken", res.data.accessToken);
 
-        console.log(err);
-      });
+      dispatch(SET_ACCESS_TOKEN(res.data.accessToken));
+
+      navigate("/");
+    } catch (err) {
+      if (err.response.data.message) {
+        alert(err.response.data.message);
+      }
+
+      console.log(err);
+    }
   };
 
   return (
