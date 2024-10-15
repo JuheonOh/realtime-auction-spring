@@ -1,5 +1,12 @@
 package com.inhatc.auction.service;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.inhatc.auction.common.Role;
 import com.inhatc.auction.config.SecurityConstants;
 import com.inhatc.auction.config.jwt.CustomUserDetails;
@@ -11,15 +18,10 @@ import com.inhatc.auction.dto.AuthResponseDTO;
 import com.inhatc.auction.dto.UserRequestDTO;
 import com.inhatc.auction.repository.AuthRepository;
 import com.inhatc.auction.repository.UserRepository;
+
 import io.jsonwebtoken.ExpiredJwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Log4j2
 @Service
@@ -30,7 +32,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
 
-
     /**
      * 로그인
      */
@@ -39,7 +40,6 @@ public class AuthService {
         // 이메일과 비밀번호 확인
         User user = this.userRepository.findByEmail(requestDTO.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일과 비밀번호를 다시 확인해주세요."));
-
 
         if (!this.passwordEncoder.matches(requestDTO.getPassword(), user.getPassword())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일과 비밀번호를 다시 확인해주세요.");
@@ -59,12 +59,15 @@ public class AuthService {
         }
 
         // 존재하지 않는 Auth 엔티티인 경우, Auth 엔티티 및 토큰 저장
-        Auth auth = this.authRepository.save(Auth.builder()
+        Auth auth = Auth.builder()
                 .user(user)
                 .tokenType(SecurityConstants.TOKEN_TYPE.strip())
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .build());
+                .build();
+
+        this.authRepository.save(auth);
+
         return new AuthResponseDTO(auth);
     }
 
@@ -98,14 +101,28 @@ public class AuthService {
         this.userRepository.save(requestDTO.toEntity());
     }
 
+    /**
+     * 로그아웃
+     */
+    @Transactional
+    public void logout(String refreshToken) {
+        try {
+            if (this.jwtTokenProvider.validateToken(refreshToken)) {
+                Auth auth = this.authRepository.findByRefreshToken(refreshToken).orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다. (REFRESH_TOKEN)"));
+
+                this.authRepository.delete(auth);
+            }
+        } catch (ExpiredJwtException e) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
+    }
 
     /**
      * Token 갱신
      */
     @Transactional
     public String refreshToken(String refreshToken) {
-        log.info("AuthService - refreshToken: {}", refreshToken);
-
         // REFRESH_TOKEN 만료 확인 및 ACCESS_TOKEN 갱신
         try {
             if (this.jwtTokenProvider.validateToken(refreshToken)) {
@@ -118,9 +135,7 @@ public class AuthService {
                 auth.updateAccessToken(newAccessToken);
                 return newAccessToken;
             }
-        } catch (ExpiredJwtException e){
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
-        } catch (Exception e) {
+        } catch (ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
         }
 

@@ -1,14 +1,13 @@
 package com.inhatc.auction.dto;
 
-import com.inhatc.auction.domain.User;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.time.LocalDateTime;
 
-@Getter
-@Setter
+import com.inhatc.auction.domain.User;
+
+import lombok.Builder;
+import lombok.Data;
+
+@Data
 public class UserResponseDTO {
     private Long id;
     private String email;

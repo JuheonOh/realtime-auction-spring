@@ -1,12 +1,11 @@
 package com.inhatc.auction.dto;
 
 import com.inhatc.auction.domain.Auth;
-import lombok.*;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
+import lombok.Builder;
+import lombok.Data;
+
+@Data
 public class AuthResponseDTO {
     private String tokenType;
     private String accessToken;

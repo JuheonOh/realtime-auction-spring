@@ -28,11 +28,11 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
     private Auth auth;
 
     @OneToMany(mappedBy = "user")
-    private List<Item> items;
+    private List<Auction> auctions;
 
     @OneToMany(mappedBy = "user")
     private List<Bid> bids;
@@ -48,11 +48,11 @@ public class User {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void update(UserRequestDTO requestDTO) {
-        this.email = requestDTO.getEmail();
-        this.password = requestDTO.getPassword();
-        this.name = requestDTO.getName();
-        this.phone = requestDTO.getPhone();
-        this.updatedAt = LocalDateTime.now();
-    }
+    // public void update(UserRequestDTO requestDTO) {
+    //     this.email = requestDTO.getEmail();
+    //     this.password = requestDTO.getPassword();
+    //     this.name = requestDTO.getName();
+    //     this.phone = requestDTO.getPhone();
+    //     this.updatedAt = LocalDateTime.now();
+    // }
 }
