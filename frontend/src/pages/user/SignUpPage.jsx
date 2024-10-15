@@ -1,5 +1,5 @@
+import { Eye, EyeOff, Lock, Mail, Phone, User } from "lucide-react";
 import { useState } from "react";
-import { Eye, EyeOff, Mail, Lock, User, Phone } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { signUp } from "../../apis/AuthAPI";
 
@@ -19,10 +19,33 @@ export default function SignUpPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
+
+    setFormData((prevData) => {
+      let newValue = value;
+
+      if (name === "agreeTerms") {
+        newValue = e.target.checked;
+      }
+
+      if (name === "phone") {
+        // 숫자만 추출
+        newValue = value.replace(/\D/g, "");
+
+        // 최대 11자리로 제한
+        newValue = newValue.slice(0, 11);
+
+        // 하이픈 추가
+        if (newValue.length > 3) {
+          newValue = newValue.replace(/(\d{3})(\d{0,4})(\d{0,4})/, "$1-$2-$3");
+          newValue = newValue.replace(/-{1,2}$/, ""); // 끝에 불필요한 하이픈 제거
+        }
+      }
+
+      return {
+        ...prevData,
+        [name]: newValue,
+      };
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -33,19 +56,17 @@ export default function SignUpPage() {
       return;
     }
 
-    if (formData.agreeTerms === false) {
+    if (!formData.agreeTerms) {
       alert("이용약관과 개인정보처리방침에 동의해주세요.");
       return;
     }
 
-    formData.phone = formData.phone.replace("-", "");
-
-    signUp(formData)
+    await signUp(formData)
       .then((res) => {
         navigate("/auth/login");
       })
       .catch((err) => {
-        alert(err.response.data.message);
+        alert(err.response?.data?.message);
       });
   };
 
@@ -161,7 +182,7 @@ export default function SignUpPage() {
             <div className="mt-6 grid grid-cols-2 gap-3">
               <div>
                 <Link to="#" className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                  <span className="sr-only">네이버로 회원가입</span>
+                  <span className="sr-only">이로 회원가입</span>
                   <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M15.8 9.7l-4.2 6.1H7.2V4.2h4.4v6.1l4.2-6.1h4.4l-4.4 6.3 4.4 5.3h-4.4z" />
                   </svg>

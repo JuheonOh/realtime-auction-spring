@@ -76,6 +76,8 @@ public class AuthService {
      */
     @Transactional
     public void signup(UserRequestDTO requestDTO) {
+        log.info("회원가입 요청 : {}", requestDTO);
+
         // 이메일 중복 확인
         if (this.userRepository.existsByEmail(requestDTO.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 존재하는 이메일입니다.");
@@ -86,10 +88,13 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
         }
 
-        // 이용약관 및 개인정보 처리방침 동의 확인
-        if (!requestDTO.isAgreeTerms()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이용약관과 개인정보 처리방침에 동의해주세요.");
+        // 휴대폰 번호 확인
+        if (!requestDTO.getPhone().matches("^01(?:0|1|[6-9])-(\\d{3}|\\d{4})-\\d{4}$")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "휴대폰 번호를 다시 확인해주세요.");
         }
+
+        // 휴대폰 번호 하이픈 제거
+        requestDTO.setPhone(requestDTO.getPhone().replace("-", ""));
 
         // 권한 설정
         requestDTO.setRole(Role.ROLE_USER);
