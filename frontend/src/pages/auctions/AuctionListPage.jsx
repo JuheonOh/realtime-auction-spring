@@ -1,5 +1,6 @@
-import { Bell, Clock, DollarSign, Heart, Search, Zap } from "lucide-react";
+import { Bell, Clock, DollarSign, Search, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getCategoryList } from "../../apis/AuctionAPI";
 
 // 실제 구현에서는 이 부분을 서버로부터 받아오는 로직으로 대체해야 합니다.
@@ -12,7 +13,7 @@ const mockAuctions = [
   { id: 6, name: "Classic Car", currentBid: 15000, timeLeft: 900, image: "/images/placeholder.svg", category: 8, immediatePurchasePrice: 30000 },
 ];
 
-export default function AuctionPage() {
+export default function AuctionListPage() {
   const [auctions, setAuctions] = useState(mockAuctions);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -23,7 +24,7 @@ export default function AuctionPage() {
   const fetchCategoryList = async () => {
     const categoryList = await getCategoryList();
     setCategoryList(categoryList);
-  }
+  };
 
   useEffect(() => {
     fetchCategoryList();
@@ -58,9 +59,6 @@ export default function AuctionPage() {
           <button className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors" title="알림">
             <Bell className="w-5 h-5" />
           </button>
-          <button className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors" title="관심 목록">
-            <Heart className="w-5 h-5" />
-          </button>
         </div>
       </header>
 
@@ -85,8 +83,13 @@ export default function AuctionPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredAndSortedAuctions.map((auction) => (
-          <div key={auction.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col justify-between">
-            <img src={auction.image} alt={auction.name} className="w-full h-48 object-cover" />
+          <Link to={`/auctions/${auction.id}`} key={auction.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col justify-between hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
+            <div className="relative w-full h-48">
+              <img src={auction.image} alt={auction.name} className="w-full h-48 object-cover" />
+              <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-opacity duration-300 flex items-center justify-center">
+                <span className="text-white text-lg font-bold opacity-0 hover:opacity-100 transition-opacity duration-300">자세히 보기</span>
+              </div>
+            </div>
             <div className="p-4">
               <h2 className="text-xl font-semibold mb-2">{auction.name}</h2>
               <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mb-2">{auction.category}</span>
@@ -116,9 +119,9 @@ export default function AuctionPage() {
             <div className="px-4 py-3 bg-gray-50">
               {auction.timeLeft > 0 ? (
                 <div className="flex gap-2">
-                  <button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors">입찰하기</button>
+                  <button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors duration-300 transform hover:scale-105">입찰하기</button>
                   {auction.immediatePurchasePrice && (
-                    <button className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors" title={`${auction.immediatePurchasePrice.toLocaleString()}원에 즉시 구매`}>
+                    <button className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors duration-300 transform hover:scale-105" title={`${auction.immediatePurchasePrice.toLocaleString()}원에 즉시 구매`}>
                       즉시 구매
                     </button>
                   )}
@@ -129,7 +132,7 @@ export default function AuctionPage() {
                 </button>
               )}
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

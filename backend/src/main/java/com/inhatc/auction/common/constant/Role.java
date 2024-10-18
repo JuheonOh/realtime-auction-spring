@@ -1,4 +1,4 @@
-package com.inhatc.auction.common;
+package com.inhatc.auction.common.constant;
 
 public enum Role {
     ROLE_USER("USER"),
@@ -8,12 +8,12 @@ public enum Role {
     private String value;
 
     // Constructor
-    Role(String value){
+    Role(String value) {
         this.value = value;
     }
 
     // GetValue
-    public String getValue(){
+    public String getValue() {
         return this.value;
     }
 
