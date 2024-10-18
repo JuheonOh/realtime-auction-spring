@@ -26,8 +26,8 @@ export default function AuctionCreatePage() {
 
   // 카테고리 목록 가져오기
   const fetchCategoryList = async () => {
-    const categoryList = await getCategoryList();
-    setCategoryList(categoryList);
+    const response = await getCategoryList();
+    setCategoryList(response.data);
   };
 
   // 카테고리 목록 가져오기
@@ -70,7 +70,7 @@ export default function AuctionCreatePage() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "image/*": [".jpeg", ".jpg", ".png", ".gif"],
+      "image/*": [".jpeg", ".jpg", ".png", ".gif", ".webp"],
     },
     maxSize: 10 * 1024 * 1024, // 10MB
   });
@@ -168,7 +168,7 @@ export default function AuctionCreatePage() {
 
       if (response.status === 201) {
         alert("경매 상품이 등록되었습니다.");
-        navigate(`/auction/${response.data.auctionId}`);
+        navigate(`/auctions/${response.data.auctionId}`);
       }
     } catch (err) {
       setInValid(err.response.data);
