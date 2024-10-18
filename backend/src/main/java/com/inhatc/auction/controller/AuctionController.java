@@ -30,7 +30,7 @@ public class AuctionController {
         return ResponseEntity.ok(auctionService.getAuctionList());
     }
 
-    @GetMapping("/{auctionId}/details")
+    @GetMapping("/{auctionId}")
     public ResponseEntity<?> getAuctionDetail(@PathVariable Long auctionId) {
         return ResponseEntity.ok(auctionService.getAuctionDetail(auctionId));
     }
