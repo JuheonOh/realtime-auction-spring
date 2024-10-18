@@ -24,7 +24,7 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link to="#" className="text-gray-400 hover:text-white transition-colors">
+                  <Link to="/support" className="text-gray-400 hover:text-white transition-colors">
                     고객센터
                   </Link>
                 </li>

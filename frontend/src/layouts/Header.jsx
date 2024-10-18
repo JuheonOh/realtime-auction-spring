@@ -1,4 +1,4 @@
-import { Menu, Search, User, X } from "lucide-react";
+import { Heart, Menu, Search, User, X } from "lucide-react";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import NotificationComponent from "../components/Notification";
@@ -21,10 +21,10 @@ export default function Header() {
             <Link to="/" className="text-gray-600 hover:text-blue-600 transition-colors">
               홈
             </Link>
-            <Link to="/auction" className="text-gray-600 hover:text-blue-600 transition-colors">
+            <Link to="/auctions" className="text-gray-600 hover:text-blue-600 transition-colors">
               경매 목록
             </Link>
-            <Link to="/auction/sell" className="text-gray-600 hover:text-blue-600 transition-colors">
+            <Link to="/auctions/new" className="text-gray-600 hover:text-blue-600 transition-colors">
               판매하기
             </Link>
             <Link to="/user/profile" className="text-gray-600 hover:text-blue-600 transition-colors">
@@ -37,6 +37,9 @@ export default function Header() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
             <NotificationComponent />
+            <button className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors" title="관심 목록">
+              <Heart className="w-5 h-5" />
+            </button>
             {isAuthenticated ? (
               <Link to="/user/profile">
                 <button className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors">
@@ -50,6 +53,7 @@ export default function Header() {
                 </button>
               </Link>
             )}
+            
             <button className="md:hidden p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors" onClick={() => setIsMenuOpen(!isMenuOpen)}>
               {isMenuOpen ? <X className="w-6 h-6 text-gray-600" /> : <Menu className="w-6 h-6 text-gray-600" />}
             </button>
@@ -60,13 +64,13 @@ export default function Header() {
             <Link to="/" className="block py-2 text-gray-600 hover:text-blue-600 transition-colors">
               홈
             </Link>
-            <Link to="/auction" className="block py-2 text-gray-600 hover:text-blue-600 transition-colors">
+            <Link to="/auctions" className="block py-2 text-gray-600 hover:text-blue-600 transition-colors">
               경매 목록
             </Link>
-            <Link to="#" className="block py-2 text-gray-600 hover:text-blue-600 transition-colors">
+            <Link to="/auctions/new" className="block py-2 text-gray-600 hover:text-blue-600 transition-colors">
               판매하기
             </Link>
-            <Link to="/profile" className="block py-2 text-gray-600 hover:text-blue-600 transition-colors">
+            <Link to="/user/profile" className="block py-2 text-gray-600 hover:text-blue-600 transition-colors">
               마이페이지
             </Link>
             <div className="relative mt-2">
