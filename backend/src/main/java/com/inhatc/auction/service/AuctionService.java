@@ -12,7 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.inhatc.auction.common.AuctionStatus;
+import com.inhatc.auction.common.constant.AuctionStatus;
 import com.inhatc.auction.domain.Auction;
 import com.inhatc.auction.domain.Category;
 import com.inhatc.auction.domain.Image;
@@ -41,7 +41,7 @@ public class AuctionService {
         return auctionRepository.findAll();
     }
 
-    public void createAuction(AuctionRequestDTO requestDTO) throws IOException {
+    public Long createAuction(AuctionRequestDTO requestDTO) {
         Long userId = requestDTO.getUserId();
         Long categoryId = requestDTO.getCategoryId();
         List<MultipartFile> multipartFiles = requestDTO.getImages();
@@ -64,37 +64,50 @@ public class AuctionService {
                 .status(AuctionStatus.ACTIVE)
                 .build();
 
-        List<Image> imageList = multipartFiles.stream()
-                .map(image -> {
-                    try {
-                        String fileSaveName = UUID.randomUUID().toString() + "_" + image.getOriginalFilename();
-                        String fileRealName = image.getOriginalFilename();
-                        String fileType = image.getContentType();
-                        long fileSize = image.getSize();
-                        Path uploadDir = Paths.get(uploadPath);
+        try {
+            List<Image> imageList = multipartFiles.stream()
+                    .map(image -> {
+                        try {
+                            String fileSaveName = UUID.randomUUID().toString() + "_" + image.getOriginalFilename();
+                            String fileRealName = image.getOriginalFilename();
+                            String fileType = image.getContentType();
+                            long fileSize = image.getSize();
+                            Path uploadDir = Paths.get(uploadPath);
 
-                        if (!Files.exists(uploadDir)) {
-                            Files.createDirectories(uploadDir);
+                            if (!Files.exists(uploadDir)) {
+                                Files.createDirectories(uploadDir);
+                            }
+
+                            Path filePath = uploadDir.resolve(fileSaveName);
+                            Files.copy(image.getInputStream(), filePath);
+
+                            return Image.builder()
+                                    .filePath(fileSaveName)
+                                    .fileName(fileRealName)
+                                    .fileType(fileType)
+                                    .fileSize(fileSize)
+                                    .auction(auction)
+                                    .build();
+                        } catch (IOException | IllegalStateException | java.io.IOException e) {
+                            log.error("이미지 업로드 중 오류 발생", e);
+                            throw new RuntimeException("이미지 업로드 중 오류 발생", e);
                         }
+                    })
+                    .collect(Collectors.toList());
 
-                        Path filePath = uploadDir.resolve(fileSaveName);
-                        Files.copy(image.getInputStream(), filePath);
+            auction.setImages(imageList); // 마지막에 연결해줘야 auction_id가 image 테이블에 들어감
+        } catch (Exception e) {
+            log.error("이미지 업로드 중 오류 발생", e);
+            throw new RuntimeException("이미지 업로드 중 오류 발생", e);
+        }
 
-                        return Image.builder()
-                                .filePath(fileSaveName)
-                                .fileName(fileRealName)
-                                .fileType(fileType)
-                                .fileSize(fileSize)
-                                .auction(auction)
-                                .build();
-                    } catch (IOException | IllegalStateException | java.io.IOException e) {
-                        log.error("이미지 업로드 중 오류 발생", e);
-                        throw new RuntimeException("이미지 업로드 중 오류 발생", e);
-                    }
-                })
-                .collect(Collectors.toList());
-
-        auction.setImages(imageList); // 마지막에 연결해줘야 auction_id가 image 테이블에 들어감
         this.auctionRepository.save(auction);
+
+        return auction.getId();
+    }
+
+    public Auction getAuctionDetail(Long auctionId) {
+        return auctionRepository.findById(auctionId)
+                .orElseThrow(() -> new RuntimeException("경매를 찾을 수 없습니다"));
     }
 }
