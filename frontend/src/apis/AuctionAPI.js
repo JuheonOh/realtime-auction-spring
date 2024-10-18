@@ -68,7 +68,7 @@ const refreshAccessToken = async () => {
 export const getCategoryList = async () => {
   try {
     const response = await AuctionApi.get("/api/categories");
-    return response.data;
+    return response;
   } catch (error) {
     throw error;
   }

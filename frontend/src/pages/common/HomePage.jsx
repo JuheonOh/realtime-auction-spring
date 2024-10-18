@@ -14,9 +14,14 @@ export default function HomePage() {
   const [categoryList, setCategoryList] = useState([]);
 
   const fetchCategoryList = async () => {
-    const categoryList = await getCategoryList();
-    setCategoryList(categoryList);
-  }
+    const response = await getCategoryList();
+
+    if (response.status === 200) {
+      setCategoryList(response.data);
+    } else {
+      console.error("Failed to fetch category list");
+    }
+  };
 
   useEffect(() => {
     fetchCategoryList();

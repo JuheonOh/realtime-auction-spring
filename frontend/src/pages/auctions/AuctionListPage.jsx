@@ -5,12 +5,12 @@ import { getCategoryList } from "../../apis/AuctionAPI";
 
 // 실제 구현에서는 이 부분을 서버로부터 받아오는 로직으로 대체해야 합니다.
 const mockAuctions = [
-  { id: 1, name: "Vintage Watch", currentBid: 1500, timeLeft: 120, image: "/images/placeholder.svg", category: 1, immediatePurchasePrice: 3000 },
-  { id: 2, name: "Modern Art Painting", currentBid: 5000, timeLeft: 300, image: "/images/placeholder.svg", category: 2, immediatePurchasePrice: 10000 },
-  { id: 3, name: "Rare Coin Collection", currentBid: 2000, timeLeft: 600, image: "/images/placeholder.svg", category: 3 },
-  { id: 4, name: "Antique Furniture", currentBid: 3500, timeLeft: 450, image: "/images/placeholder.svg", category: 5, immediatePurchasePrice: 7000 },
-  { id: 5, name: "Luxury Handbag", currentBid: 2500, timeLeft: 180, image: "/images/placeholder.svg", category: 4 },
-  { id: 6, name: "Classic Car", currentBid: 15000, timeLeft: 900, image: "/images/placeholder.svg", category: 8, immediatePurchasePrice: 30000 },
+  { id: 1, name: "Vintage Watch", currentBid: 1500, timeLeft: 120, image: "/images/placeholder.svg", category: "액세서리", immediatePurchasePrice: 3000 },
+  { id: 2, name: "Modern Art Painting", currentBid: 5000, timeLeft: 300, image: "/images/placeholder.svg", category: "미술품", immediatePurchasePrice: 10000 },
+  { id: 3, name: "Rare Coin Collection", currentBid: 2000, timeLeft: 600, image: "/images/placeholder.svg", category: "수집품", immediatePurchasePrice: 7000 },
+  { id: 4, name: "Antique Furniture", currentBid: 3500, timeLeft: 450, image: "/images/placeholder.svg", category: "가구", immediatePurchasePrice: 7000 },
+  { id: 5, name: "Luxury Handbag", currentBid: 2500, timeLeft: 180, image: "/images/placeholder.svg", category: "가방", immediatePurchasePrice: 10000 },
+  { id: 6, name: "Classic Car", currentBid: 15000, timeLeft: 900, image: "/images/placeholder.svg", category: "자동차", immediatePurchasePrice: 30000 },
 ];
 
 export default function AuctionListPage() {
@@ -22,8 +22,13 @@ export default function AuctionListPage() {
   const [categoryList, setCategoryList] = useState([]);
 
   const fetchCategoryList = async () => {
-    const categoryList = await getCategoryList();
-    setCategoryList(categoryList);
+    const response = await getCategoryList();
+
+    if (response.status === 200) {
+      setCategoryList(response.data);
+    } else {
+      console.error("Failed to fetch category list");
+    }
   };
 
   useEffect(() => {
