@@ -60,7 +60,7 @@ public class AuctionService {
                 .startPrice(requestDTO.getStartPrice())
                 .buyNowPrice(requestDTO.getBuyNowPrice())
                 .auctionStartTime(LocalDateTime.now())
-                .auctionEndTime(LocalDateTime.now().plusHours(requestDTO.getAuctionDuration()))
+                .auctionEndTime(LocalDateTime.now().plusDays(requestDTO.getAuctionDuration()))
                 .status(AuctionStatus.ACTIVE)
                 .build();
 
@@ -68,6 +68,10 @@ public class AuctionService {
             List<Image> imageList = multipartFiles.stream()
                     .map(image -> {
                         try {
+                            if (image.getOriginalFilename() == null) {
+                                throw new RuntimeException("이미지 파일 이름이 올바르지 않습니다");
+                            }
+
                             String fileSaveName = UUID.randomUUID().toString() + "_" + image.getOriginalFilename();
                             String fileRealName = image.getOriginalFilename();
                             String fileType = image.getContentType();
@@ -76,6 +80,13 @@ public class AuctionService {
 
                             if (!Files.exists(uploadDir)) {
                                 Files.createDirectories(uploadDir);
+                            }
+
+                            if (fileType != null && !fileType.equals("image/jpeg") && !fileType.equals("image/png")
+                                    && !fileType.equals("image/jpg") && !fileType.equals("image/gif")
+                                    && !fileType.equals("image/bmp") && !fileType.equals("image/webp")) {
+                                throw new RuntimeException(
+                                        "이미지 파일 타입이 올바르지 않습니다. 허용되는 타입: jpeg, png, jpg, gif, bmp, webp");
                             }
 
                             Path filePath = uploadDir.resolve(fileSaveName);
