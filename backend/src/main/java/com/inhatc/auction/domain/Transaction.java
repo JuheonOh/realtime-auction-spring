@@ -1,6 +1,6 @@
 package com.inhatc.auction.domain;
 
-import com.inhatc.auction.common.TransactionStatus;
+import com.inhatc.auction.common.constant.TransactionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

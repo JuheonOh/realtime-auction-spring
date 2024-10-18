@@ -1,11 +1,24 @@
 package com.inhatc.auction.domain;
 
-import com.inhatc.auction.common.AuctionStatus;
-import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.inhatc.auction.common.constant.AuctionStatus;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import lombok.Builder;
+import lombok.Data;
+import lombok.ToString;
 
 @Entity
 @Data
@@ -47,7 +60,6 @@ public class Auction {
     @OneToMany(mappedBy = "auction")
     @ToString.Exclude
     private List<Bid> bids;
-
 
     @Builder
     public Auction(User user, Category category, String title, String description, Long startPrice, Long buyNowPrice,

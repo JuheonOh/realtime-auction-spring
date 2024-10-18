@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.inhatc.auction.common.Role;
+import com.inhatc.auction.common.constant.Role;
 import com.inhatc.auction.config.SecurityConstants;
 import com.inhatc.auction.config.jwt.CustomUserDetails;
 import com.inhatc.auction.config.jwt.JwtTokenProvider;

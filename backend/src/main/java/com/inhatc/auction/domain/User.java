@@ -1,6 +1,6 @@
 package com.inhatc.auction.domain;
 
-import com.inhatc.auction.common.Role;
+import com.inhatc.auction.common.constant.Role;
 import com.inhatc.auction.dto.UserRequestDTO;
 import jakarta.persistence.*;
 import lombok.Builder;
@@ -49,10 +49,10 @@ public class User {
     }
 
     // public void update(UserRequestDTO requestDTO) {
-    //     this.email = requestDTO.getEmail();
-    //     this.password = requestDTO.getPassword();
-    //     this.name = requestDTO.getName();
-    //     this.phone = requestDTO.getPhone();
-    //     this.updatedAt = LocalDateTime.now();
+    // this.email = requestDTO.getEmail();
+    // this.password = requestDTO.getPassword();
+    // this.name = requestDTO.getName();
+    // this.phone = requestDTO.getPhone();
+    // this.updatedAt = LocalDateTime.now();
     // }
 }
