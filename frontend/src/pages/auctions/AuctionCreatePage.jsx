@@ -1,10 +1,12 @@
-import { AlertCircle, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { addAuction, getCategoryList } from "../../apis/AuctionAPI";
+import { addAuction } from "../../apis/AuctionAPI";
+import { getCategoryList } from "../../apis/CommonAPI";
 import InputField from "../../components/InputField";
+import InValidAlert from "../../components/InValidAlert";
 
 export default function AuctionCreatePage() {
   const navigate = useNavigate();
@@ -106,41 +108,41 @@ export default function AuctionCreatePage() {
 
   const validateForm = () => {
     const inValid = {};
-  
+
     if (!formData.title.trim()) {
       inValid.title = "제목은 필수 입력 사항입니다.";
     }
-  
+
     if (!formData.description.trim()) {
       inValid.description = "설명은 필수 입력 사항입니다.";
     }
-  
+
     if (!formData.categoryId) {
       inValid.categoryId = "카테고리는 필수 선택 사항입니다.";
     }
-  
+
     const startPrice = parseInt(formData.startPrice.replace(/,/g, ""));
     if (isNaN(startPrice) || startPrice <= 0) {
       inValid.startPrice = "유효한 경매 시작 가격을 입력하세요.";
     }
 
-    if(startPrice < 1000) {
+    if (startPrice < 1000) {
       inValid.startPrice = "경매 시작 가격은 최소 1,000원 이상이어야 합니다.";
     }
-  
+
     const buyNowPrice = parseInt(formData.buyNowPrice.replace(/,/g, ""));
     if (buyNowPrice && buyNowPrice <= startPrice && buyNowPrice !== 0) {
       inValid.buyNowPrice = "즉시 구매 가격은 경매 시작 가격보다 높아야 합니다.";
     }
-  
+
     if (!formData.auctionDuration) {
       inValid.auctionDuration = "경매 기간은 필수 선택 사항입니다.";
     }
-  
+
     if (formData.images.length === 0) {
       inValid.images = "이미지를 최소 1개 이상 업로드해야 합니다.";
     }
-  
+
     setInValid(inValid);
     return Object.keys(inValid).length === 0;
   };
@@ -148,7 +150,7 @@ export default function AuctionCreatePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if(!validateForm()) {
+    if (!validateForm()) {
       return;
     }
 
@@ -175,8 +177,6 @@ export default function AuctionCreatePage() {
     }
   };
 
-  
-
   return (
     <div className="bg-gray-100 min-h-screen py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -190,14 +190,8 @@ export default function AuctionCreatePage() {
                   상품 설명
                 </label>
                 <textarea id="description" name="description" value={formData.description} placeholder="상품에 대한 자세한 설명을 입력하세요." onChange={handleChange} rows="4" className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inValid.description ? "border-red-500" : "border-gray-300"}`}></textarea>
-                {inValid.description && (
-                  <div className="mt-1 text-red-500 text-sm flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    {inValid.description}
-                  </div>
-                )}
+                <InValidAlert inValid={inValid.description} message={inValid.description} />
               </div>
-
               <div>
                 <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
                   카테고리
@@ -210,12 +204,7 @@ export default function AuctionCreatePage() {
                     </option>
                   ))}
                 </select>
-                {inValid.categoryId && (
-                  <div className="mt-1 text-red-500 text-sm flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    {inValid.categoryId}
-                  </div>
-                )}
+                <InValidAlert inValid={inValid.categoryId} message={inValid.categoryId} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -234,12 +223,7 @@ export default function AuctionCreatePage() {
                   <option value="7">7일</option>
                   <option value="10">10일</option>
                 </select>
-                {inValid.auctionDuration && (
-                  <div className="mt-1 text-red-500 text-sm flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    {inValid.auctionDuration}
-                  </div>
-                )}
+                <InValidAlert inValid={inValid.auctionDuration} message={inValid.auctionDuration} />
               </div>
 
               <div>
@@ -257,25 +241,21 @@ export default function AuctionCreatePage() {
                     <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
                   </div>
                 </div>
-                {inValid.images && (
-                  <div className="mt-1 text-red-500 text-sm flex items-center">
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    {inValid.images}
-                  </div>
-                )}
-                {previewImages.length > 0 && (
-                  <div className="mt-4 grid grid-cols-3 gap-4">
-                    {previewImages.map((image, index) => (
-                      <div key={index} className="relative">
-                        <img src={image} alt={`Preview ${index + 1}`} className="h-24 w-full object-cover rounded-md" />
-                        <button type="button" onClick={() => removeImage(index)} className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1">
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <InValidAlert inValid={inValid.images} message={inValid.images} />
               </div>
+
+              {previewImages.length > 0 && (
+                <div className="mt-4 grid grid-cols-3 gap-4">
+                  {previewImages.map((image, index) => (
+                    <div key={index} className="relative">
+                      <img src={image} alt={`Preview ${index + 1}`} className="h-24 w-full object-cover rounded-md" />
+                      <button type="button" onClick={() => removeImage(index)} className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               <div>
                 <button type="submit" className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition-colors">
