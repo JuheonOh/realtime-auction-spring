@@ -1,14 +1,23 @@
 package com.inhatc.auction.domain;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import com.inhatc.auction.common.constant.Role;
-import com.inhatc.auction.dto.UserRequestDTO;
-import jakarta.persistence.*;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Entity
 @Getter
@@ -47,12 +56,4 @@ public class User {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
-
-    // public void update(UserRequestDTO requestDTO) {
-    // this.email = requestDTO.getEmail();
-    // this.password = requestDTO.getPassword();
-    // this.name = requestDTO.getName();
-    // this.phone = requestDTO.getPhone();
-    // this.updatedAt = LocalDateTime.now();
-    // }
 }
