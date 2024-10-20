@@ -1,18 +1,21 @@
-package com.inhatc.auction.config;
+package com.inhatc.auction.common.exception;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.log4j.Log4j2;
+
 import org.springframework.security.core.AuthenticationException;
 
 import java.io.IOException;
 
-@Log4j2
+import org.springframework.security.web.AuthenticationEntryPoint;
 
-public class CustomAuthenticationEntryPoint implements org.springframework.security.web.AuthenticationEntryPoint {
+@Log4j2
+public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
+    public void commence(HttpServletRequest request, HttpServletResponse response,
+            AuthenticationException authException) throws IOException, ServletException {
         log.error("Authentication Entry Point {}", request.getRequestURI());
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, authException.getLocalizedMessage());
     }

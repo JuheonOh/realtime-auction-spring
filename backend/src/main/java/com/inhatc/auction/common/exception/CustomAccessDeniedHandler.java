@@ -1,4 +1,4 @@
-package com.inhatc.auction.config;
+package com.inhatc.auction.common.exception;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,7 +16,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
-                       AccessDeniedException accessDeniedException) throws IOException, ServletException {
+            AccessDeniedException accessDeniedException) throws IOException, ServletException {
         log.error("Access Denied Handler");
         response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access Denied");
     }
