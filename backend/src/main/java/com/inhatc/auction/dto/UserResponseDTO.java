@@ -23,7 +23,6 @@ public class UserResponseDTO {
         this.email = entity.getEmail();
         this.name = entity.getName();
         this.phone = entity.getPhone();
-        // Enum -> String
         this.role = entity.getRole().name();
         this.createdAt = entity.getCreatedAt();
         this.updatedAt = entity.getUpdatedAt();

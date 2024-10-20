@@ -1,5 +1,7 @@
 package com.inhatc.auction.service;
 
+import java.util.HashMap;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -8,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.inhatc.auction.common.constant.Role;
+import com.inhatc.auction.common.exception.CustomResponseStatusException;
 import com.inhatc.auction.config.SecurityConstants;
 import com.inhatc.auction.config.jwt.CustomUserDetails;
 import com.inhatc.auction.config.jwt.JwtTokenProvider;
@@ -39,10 +42,16 @@ public class AuthService {
     public AuthResponseDTO login(AuthRequestDTO requestDTO) {
         // 이메일과 비밀번호 확인
         User user = this.userRepository.findByEmail(requestDTO.getEmail())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일과 비밀번호를 다시 확인해주세요."));
+                .orElseThrow(() -> {
+                    HashMap<String, String> errors = new HashMap<>();
+                    errors.put("email", "이메일과 비밀번호를 다시 확인해주세요.");
+                    return new CustomResponseStatusException(HttpStatus.UNAUTHORIZED, errors);
+                });
 
         if (!this.passwordEncoder.matches(requestDTO.getPassword(), user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일과 비밀번호를 다시 확인해주세요.");
+            HashMap<String, String> errors = new HashMap<>();
+            errors.put("password", "이메일과 비밀번호를 다시 확인해주세요.");
+            throw new CustomResponseStatusException(HttpStatus.UNAUTHORIZED, errors);
         }
 
         // 액세스 토큰 및 리프레시 토큰 생성
@@ -78,32 +87,23 @@ public class AuthService {
     public void signup(UserRequestDTO requestDTO) {
         log.info("회원가입 요청 : {}", requestDTO);
 
-        // 이메일 중복 확인
-        if (this.userRepository.existsByEmail(requestDTO.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 존재하는 이메일입니다.");
-        }
-
-        // 비밀번호 확인
-        if (!requestDTO.getPassword().equals(requestDTO.getConfirmPassword())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
-        }
-
-        // 휴대폰 번호 확인
-        if (!requestDTO.getPhone().matches("^01(?:0|1|[6-9])-(\\d{3}|\\d{4})-\\d{4}$")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "휴대폰 번호를 다시 확인해주세요.");
-        }
-
         // 휴대폰 번호 하이픈 제거
         requestDTO.setPhone(requestDTO.getPhone().replace("-", ""));
-
-        // 권한 설정
-        requestDTO.setRole(Role.ROLE_USER);
 
         // 비밀번호 암호화
         requestDTO.setPassword(passwordEncoder.encode(requestDTO.getPassword()));
 
+        // 유저 엔티티 생성
+        User user = User.builder()
+                .email(requestDTO.getEmail())
+                .password(requestDTO.getPassword())
+                .name(requestDTO.getName())
+                .phone(requestDTO.getPhone())
+                .role(Role.ROLE_USER)
+                .build();
+
         // 저장
-        this.userRepository.save(requestDTO.toEntity());
+        this.userRepository.save(user);
     }
 
     /**
@@ -113,10 +113,11 @@ public class AuthService {
     public void logout(String refreshToken) {
         try {
             if (this.jwtTokenProvider.validateToken(refreshToken)) {
-                Auth auth = this.authRepository.findByRefreshToken(refreshToken).orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다. (REFRESH_TOKEN)"));
+                Auth auth = this.authRepository.findByRefreshToken(refreshToken).orElse(null);
 
-                this.authRepository.delete(auth);
+                if (auth != null) {
+                    this.authRepository.delete(auth);
+                }
             }
         } catch (ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);

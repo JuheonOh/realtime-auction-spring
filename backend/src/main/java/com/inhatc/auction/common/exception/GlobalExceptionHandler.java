@@ -28,4 +28,9 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.badRequest().body(errors);
     }
+
+    @ExceptionHandler(CustomResponseStatusException.class)
+    public ResponseEntity<?> handleCustomResponseStatusException(CustomResponseStatusException ex) {
+        return ResponseEntity.status(ex.getStatusCode()).body(ex.getErrors());
+    }
 }

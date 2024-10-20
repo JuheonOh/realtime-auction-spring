@@ -17,6 +17,7 @@ import com.inhatc.auction.dto.AuthResponseDTO;
 import com.inhatc.auction.dto.UserRequestDTO;
 import com.inhatc.auction.service.AuthService;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
@@ -28,13 +29,13 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody AuthRequestDTO requestDTO) {
+    public ResponseEntity<?> login(@Valid @RequestBody AuthRequestDTO requestDTO) {
         AuthResponseDTO responseDTO = this.authService.login(requestDTO);
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody UserRequestDTO requestDTO) {
+    public ResponseEntity<?> signup(@Valid @RequestBody UserRequestDTO requestDTO) {
         this.authService.signup(requestDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(null);
     }

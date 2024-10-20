@@ -2,6 +2,7 @@ import { Eye, EyeOff, Lock, Mail, Phone, User } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signUp } from "../../apis/AuthAPI";
+import InValidAlert from "../../components/InValidAlert";
 
 export default function SignUpPage() {
   const navigate = useNavigate();
@@ -16,16 +17,63 @@ export default function SignUpPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [inValid, setInValid] = useState({});
+
+  const validateForm = () => {
+    const inValid = {};
+
+    if (!formData.name.trim()) {
+      inValid.name = "이름은 필수 입력 사항입니다.";
+    }
+
+    if (!formData.email.trim()) {
+      inValid.email = "이메일은 필수 입력 사항입니다.";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      inValid.email = "유효한 이메일 주소를 입력하세요.";
+    }
+
+    if (!formData.password) {
+      inValid.password = "비밀번호는 필수 입력 사항입니다.";
+    }
+
+    if (!formData.confirmPassword) {
+      inValid.confirmPassword = "비밀번호 확인은 필수 입력 사항입니다.";
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      inValid.confirmPassword = "비밀번호가 일치하지 않습니다.";
+    }
+
+    if (!formData.phone.trim()) {
+      inValid.phone = "전화번호는 필수 입력 사항입니다.";
+    } else if (!/^\d{3}-\d{3,4}-\d{4}$/.test(formData.phone)) {
+      inValid.phone = "유효한 전화번호를 입력하세요.";
+    }
+
+    if (!formData.agreeTerms) {
+      inValid.agreeTerms = "이용약관과 개인정보처리방침에 동의해야 합니다.";
+    }
+
+    setInValid(inValid);
+
+    // inValid 첫번째 추가된 name에 focus
+    if (Object.keys(inValid).length > 0) {
+      document.getElementById(Object.keys(inValid)[0]).focus();
+    }
+
+    return Object.keys(inValid).length === 0;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
+    setInValid((prevInValid) => ({
+      ...prevInValid,
+      [name]: "",
+    }));
+
     setFormData((prevData) => {
       let newValue = value;
-
-      if (name === "agreeTerms") {
-        newValue = e.target.checked;
-      }
 
       if (name === "phone") {
         // 숫자만 추출
@@ -41,6 +89,10 @@ export default function SignUpPage() {
         }
       }
 
+      if (name === "agreeTerms") {
+        newValue = e.target.checked;
+      }
+
       return {
         ...prevData,
         [name]: newValue,
@@ -51,23 +103,17 @@ export default function SignUpPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      alert("비밀번호가 일치하지 않습니다.");
+    if (!validateForm()) {
       return;
     }
 
-    if (!formData.agreeTerms) {
-      alert("이용약관과 개인정보처리방침에 동의해주세요.");
-      return;
+    try {
+      await signUp(formData);
+      
+      navigate("/auth/login");
+    } catch (err) {
+      console.log(err);
     }
-
-    await signUp(formData)
-      .then((res) => {
-        navigate("/auth/login");
-      })
-      .catch((err) => {
-        alert(err.response?.data?.message);
-      });
   };
 
   return (
@@ -84,8 +130,9 @@ export default function SignUpPage() {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <User className="h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
-                <input id="name" name="name" type="text" autoComplete="name" required className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="홍길동" value={formData.name} onChange={handleChange} />
+                <input id="name" name="name" type="text" autoComplete="name" className={`focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md ${inValid.name ? "border-red-500" : ""}`} placeholder="홍길동" value={formData.name} onChange={handleChange} />
               </div>
+              <InValidAlert inValid={inValid.name} message={inValid.name} className="mt-3" />
             </div>
 
             <div>
@@ -96,10 +143,10 @@ export default function SignUpPage() {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
-                <input id="email" name="email" type="email" autoComplete="email" required className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="you@example.com" value={formData.email} onChange={handleChange} />
+                <input id="email" name="email" type="text" autoComplete="email" className={`focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md ${inValid.email ? "border-red-500" : ""}`} placeholder="you@example.com" value={formData.email} onChange={handleChange} />
               </div>
+              <InValidAlert inValid={inValid.email} message={inValid.email} className="mt-3" />
             </div>
-
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 비밀번호
@@ -108,15 +155,15 @@ export default function SignUpPage() {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
-                <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="new-password" required className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 sm:text-sm border-gray-300 rounded-md" placeholder="••••••••" value={formData.password} onChange={handleChange} />
+                <input id="password" name="password" type={showPassword ? "text" : "password"} autoComplete="new-password" className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 sm:text-sm border-gray-300 rounded-md" placeholder="••••••••" value={formData.password} onChange={handleChange} />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <button type="button" className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
                   </button>
                 </div>
               </div>
+              <InValidAlert inValid={inValid.password} message={inValid.password} className="mt-3" />
             </div>
-
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                 비밀번호 확인
@@ -125,13 +172,14 @@ export default function SignUpPage() {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
-                <input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" required className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 sm:text-sm border-gray-300 rounded-md" placeholder="••••••••" value={formData.confirmPassword} onChange={handleChange} />
+                <input id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-10 sm:text-sm border-gray-300 rounded-md" placeholder="••••••••" value={formData.confirmPassword} onChange={handleChange} />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                   <button type="button" className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
                   </button>
                 </div>
               </div>
+              <InValidAlert inValid={inValid.confirmPassword} message={inValid.confirmPassword} className="mt-3" />
             </div>
 
             <div>
@@ -142,26 +190,28 @@ export default function SignUpPage() {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Phone className="h-5 w-5 text-gray-400" aria-hidden="true" />
                 </div>
-                <input id="phone" name="phone" type="tel" autoComplete="tel" required className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="010-1234-5678" value={formData.phone} onChange={handleChange} />
+                <input id="phone" name="phone" type="tel" autoComplete="tel" className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="010-1234-5678" value={formData.phone} onChange={handleChange} />
               </div>
+              <InValidAlert inValid={inValid.phone} message={inValid.phone} className="mt-3" />
             </div>
-
-            <div className="flex items-center">
-              <input id="agreeTerms" name="agreeTerms" type="checkbox" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" required onChange={handleChange} />
-              <label htmlFor="agreeTerms" className="ml-2 block text-sm text-gray-900">
-                <span>
-                  <Link to="/terms" className="font-medium text-blue-600 hover:text-blue-500">
-                    이용약관
-                  </Link>
-                  과{" "}
-                  <Link to="/privacy" className="font-medium text-blue-600 hover:text-blue-500">
-                    개인정보처리방침
-                  </Link>
-                  에 동의합니다.
-                </span>
-              </label>
+            <div>
+              <div className="flex items-center pt-3">
+                <input id="agreeTerms" name="agreeTerms" type="checkbox" className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" onChange={handleChange} />
+                <label htmlFor="agreeTerms" className="ml-2 block text-sm text-gray-900">
+                  <span>
+                    <Link to="/terms" className="font-medium text-blue-600 hover:text-blue-500">
+                      이용약관
+                    </Link>
+                    과{" "}
+                    <Link to="/privacy" className="font-medium text-blue-600 hover:text-blue-500">
+                      개인정보처리방침
+                    </Link>
+                    에 동의합니다.
+                  </span>
+                </label>
+              </div>
+              <InValidAlert inValid={inValid.agreeTerms} message={inValid.agreeTerms} className="mt-3" />
             </div>
-
             <div>
               <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                 회원가입

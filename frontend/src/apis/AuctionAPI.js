@@ -65,21 +65,12 @@ const refreshAccessToken = async () => {
   }
 };
 
-export const getCategoryList = async () => {
-  try {
-    const response = await AuctionApi.get("/api/categories");
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const addAuction = async (formData) => {
   try {
     const response = await AuctionApi.post("/api/auctions", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
-      }
+      },
     });
     return response;
   } catch (error) {
