@@ -1,5 +1,7 @@
 package com.inhatc.auction.config;
 
+import com.inhatc.auction.common.exception.CustomAccessDeniedHandler;
+import com.inhatc.auction.common.exception.CustomAuthenticationEntryPoint;
 import com.inhatc.auction.config.jwt.JwtTokenFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -39,13 +41,13 @@ public class SecurityConfig {
                 // url 권한 설정
                 // 인증이 필요 없는 url 설정
                 // 그 외 모든 요청은 인증이 필요함
-                .authorizeHttpRequests(requests -> requests.requestMatchers("/**").permitAll().anyRequest().authenticated())
+                .authorizeHttpRequests(
+                        requests -> requests.requestMatchers("/**").permitAll().anyRequest().authenticated())
 
                 // 예외 처리 설정
-                .exceptionHandling(exception ->
-                        exception
-                                .authenticationEntryPoint(new CustomAuthenticationEntryPoint()) // 인증이 필요한 경우
-                                .accessDeniedHandler(new CustomAccessDeniedHandler())) // 인가가 필요한 경우
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(new CustomAuthenticationEntryPoint()) // 인증이 필요한 경우
+                        .accessDeniedHandler(new CustomAccessDeniedHandler())) // 인가가 필요한 경우
 
                 // 토큰 인증 필터 추가
                 .addFilterBefore(this.jwtTokenFilter, UsernamePasswordAuthenticationFilter.class)
@@ -60,7 +62,10 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*")); // 모든 출처 패턴 허용
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // 모든 메소드 허용
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "REFRESH_TOKEN")); // 모든 헤더 허용
+        configuration
+                .setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "REFRESH_TOKEN")); // 모든
+                                                                                                                         // 헤더
+                                                                                                                         // 허용
         configuration.setExposedHeaders(Arrays.asList("Authorization", "REFRESH_TOKEN", "Set-Cookie")); // 노출 헤더
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
