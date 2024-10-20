@@ -1,16 +1,24 @@
 package com.inhatc.auction.config.jwt;
 
-import com.inhatc.auction.config.SecurityConstants;
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
-import lombok.extern.log4j.Log4j2;
+import java.util.Date;
+
+import javax.crypto.SecretKey;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
-import javax.crypto.SecretKey;
-import java.util.Date;
+import com.inhatc.auction.config.SecurityConstants;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
+import io.jsonwebtoken.UnsupportedJwtException;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
+import jakarta.annotation.PostConstruct;
+import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 @Component
@@ -36,7 +44,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .signWith(jwtSecretKey) // 암호화 알고리즘, secret값 세팅
                 .header() // 토큰의 헤더 설정
-                    .add("typ", SecurityConstants.TOKEN_TYPE) // 토큰의 타입
+                .add("typ", SecurityConstants.TOKEN_TYPE) // 토큰의 타입
                 .and() // 헤더 설정 종료
                 .claim("user-id", customUserDetails.getId())
                 .claim("user-name", customUserDetails.getUsername())
@@ -54,7 +62,6 @@ public class JwtTokenProvider {
     public String generateRefreshToken(Authentication authentication) {
         return generateToken(authentication, jwtRefreshTokenExpirationTime);
     }
-
 
     public Long getUserIdFromToken(String token) {
         return getClaims(token).get("user-id", Long.class);
@@ -79,8 +86,20 @@ public class JwtTokenProvider {
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-        } catch (Exception e) {
-            log.info("JWT 토큰 파싱 실패: {}", e.getMessage());
+        } catch (ExpiredJwtException e) {
+            log.info("만료된 JWT 토큰: {}", e.getMessage());
+            throw e;
+        } catch (UnsupportedJwtException e) {
+            log.info("지원되지 않는 JWT 토큰: {}", e.getMessage());
+            throw e;
+        } catch (MalformedJwtException e) {
+            log.info("잘못된 형식의 JWT 토큰: {}", e.getMessage());
+            throw e;
+        } catch (SignatureException e) {
+            log.info("잘못된 JWT 서명: {}", e.getMessage());
+            throw e;
+        } catch (IllegalArgumentException e) {
+            log.info("JWT 토큰이 비어있음: {}", e.getMessage());
             throw e;
         }
     }
