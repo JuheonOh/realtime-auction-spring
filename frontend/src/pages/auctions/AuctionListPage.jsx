@@ -1,7 +1,7 @@
 import { Bell, Clock, DollarSign, Search, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getCategoryList } from "../../apis/AuctionAPI";
+import { getCategoryList } from "../../apis/CommonAPI";
 
 // 실제 구현에서는 이 부분을 서버로부터 받아오는 로직으로 대체해야 합니다.
 const mockAuctions = [

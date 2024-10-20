@@ -1,5 +1,5 @@
 import { Clock, DollarSign } from "lucide-react";
-import { getCategoryList } from "../../apis/AuctionAPI";
+import { getCategoryList } from "../../apis/CommonAPI";
 import { useEffect, useState } from "react";
 
 export default function HomePage() {
