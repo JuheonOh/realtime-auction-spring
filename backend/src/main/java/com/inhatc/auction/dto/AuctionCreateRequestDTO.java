@@ -16,7 +16,7 @@ import lombok.Data;
 
 @Data
 @BuyNowPriceValidator
-public class AuctionRequestDTO {
+public class AuctionCreateRequestDTO {
     @NotNull(message = "로그인 정보가 없습니다.")
     private Long userId;
 

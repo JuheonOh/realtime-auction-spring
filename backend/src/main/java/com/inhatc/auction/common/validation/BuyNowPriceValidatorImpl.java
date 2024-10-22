@@ -1,14 +1,14 @@
 package com.inhatc.auction.common.validation;
 
-import com.inhatc.auction.dto.AuctionRequestDTO;
+import com.inhatc.auction.dto.AuctionCreateRequestDTO;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-public class BuyNowPriceValidatorImpl implements ConstraintValidator<BuyNowPriceValidator, AuctionRequestDTO> {
+public class BuyNowPriceValidatorImpl implements ConstraintValidator<BuyNowPriceValidator, AuctionCreateRequestDTO> {
 
     @Override
-    public boolean isValid(AuctionRequestDTO requestDTO, ConstraintValidatorContext context) {
+    public boolean isValid(AuctionCreateRequestDTO requestDTO, ConstraintValidatorContext context) {
         // buyNowPrice가 null이거나 0이면 검증하지 않음
         if (requestDTO.getBuyNowPrice() == null || requestDTO.getBuyNowPrice() == 0) {
             return true;

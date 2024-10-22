@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.inhatc.auction.dto.AuctionRequestDTO;
+import com.inhatc.auction.dto.AuctionCreateRequestDTO;
 import com.inhatc.auction.service.AuctionService;
 
 import jakarta.validation.Valid;
@@ -27,7 +27,7 @@ public class AuctionController {
 
     @GetMapping
     public ResponseEntity<?> getAuctionList() {
-        return ResponseEntity.ok(auctionService.getAuctionList());
+        return ResponseEntity.status(HttpStatus.OK).body(auctionService.getAuctionList());
     }
 
     @GetMapping("/{auctionId}")
@@ -36,7 +36,7 @@ public class AuctionController {
     }
 
     @PostMapping
-    public ResponseEntity<?> createAuction(@Valid @ModelAttribute AuctionRequestDTO requestDTO) {
+    public ResponseEntity<?> createAuction(@Valid @ModelAttribute AuctionCreateRequestDTO requestDTO) {
         Long auctionId = this.auctionService.createAuction(requestDTO);
 
         HashMap<String, Long> response = new HashMap<>();
