@@ -1,14 +1,14 @@
 package com.inhatc.auction.common.validation;
 
-import com.inhatc.auction.dto.AuctionCreateRequestDTO;
+import com.inhatc.auction.dto.AuctionRequestDTO;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
-public class BuyNowPriceValidatorImpl implements ConstraintValidator<BuyNowPriceValidator, AuctionCreateRequestDTO> {
+public class BuyNowPriceValidatorImpl implements ConstraintValidator<BuyNowPriceValidator, AuctionRequestDTO> {
 
     @Override
-    public boolean isValid(AuctionCreateRequestDTO requestDTO, ConstraintValidatorContext context) {
+    public boolean isValid(AuctionRequestDTO requestDTO, ConstraintValidatorContext context) {
         // buyNowPrice가 null이거나 0이면 검증하지 않음
         if (requestDTO.getBuyNowPrice() == null || requestDTO.getBuyNowPrice() == 0) {
             return true;
@@ -20,7 +20,7 @@ public class BuyNowPriceValidatorImpl implements ConstraintValidator<BuyNowPrice
         }
 
         // buyNowPrice가 startPrice보다 작으면 검증 실패
-        boolean isValid = requestDTO.getBuyNowPrice() > requestDTO.getStartPrice();
+        boolean isValid = requestDTO.getBuyNowPrice() >= requestDTO.getStartPrice();
         if (!isValid) {
             context.disableDefaultConstraintViolation(); // 기본 메시지 비활성화
             context.buildConstraintViolationWithTemplate(context.getDefaultConstraintMessageTemplate()) // 새로운 메시지 생성
