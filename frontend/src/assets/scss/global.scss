@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "NotoSansKR-Regular";
+  src: url("../fonts/NotoSansKR-Regular.ttf") format("truetype");
+  font-weight: normal;
+}
+
+html {
+  overflow-y: scroll;
+}
+
+body {
+  font-family: "NotoSansKR-Regular", sans-serif;
+}
+
+
+.image-scroll-container{
+  &::-webkit-scrollbar {
+    width:6px;
+    height:6px;
+    border-radius: 6px;
+    background-color: rgba(59, 130, 246, 0.1); // 연한 파란색 배경
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(59, 130, 246, 0.7); // 진한 파란색 스크롤바
+    border-radius: 6px;
+    
+    &:hover {
+      background-color: rgba(59, 130, 246, 1); // 호버 시 더 진한 파란색
+    }
+  }
+}
