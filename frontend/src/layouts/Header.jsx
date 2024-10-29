@@ -18,7 +18,7 @@ export default function Header() {
   const NAV_LINKS = [
     { path: "/", label: "홈" },
     { path: "/auctions", label: "경매 목록" },
-    { path: "/auctions/new", label: "판매하기" },
+    { path: "/auctions/create", label: "판매하기" },
     { path: "/user/profile", label: "마이페이지" },
   ];
 

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getCookie } from "../storage/Cookie";
+import { getCookie } from "../data/storage/Cookie";
 
 const BASE_URL = "http://localhost:8080";
 

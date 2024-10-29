@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../../apis/AuthAPI";
-import { LOGOUT } from "../../redux/store/User";
+import { LOGOUT } from "../../data/redux/store/User";
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
