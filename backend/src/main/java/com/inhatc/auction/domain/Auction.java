@@ -1,6 +1,7 @@
 package com.inhatc.auction.domain;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.inhatc.auction.common.constant.AuctionStatus;
@@ -10,6 +11,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -17,21 +19,24 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import lombok.Builder;
-import lombok.Data;
-import lombok.ToString;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
 public class Auction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "category_id")
     private Category category;
 
@@ -42,6 +47,7 @@ public class Auction {
 
     private Long startPrice;
     private Long buyNowPrice;
+    private Long currentPrice;
     private Long successfulPrice;
 
     private LocalDateTime auctionStartTime;
@@ -53,13 +59,11 @@ public class Auction {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "auction", cascade = CascadeType.ALL)
-    @ToString.Exclude
-    private List<Image> images;
+    @OneToMany(mappedBy = "auction", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    private List<Image> images = new ArrayList<>();
 
-    @OneToMany(mappedBy = "auction")
-    @ToString.Exclude
-    private List<Bid> bids;
+    @OneToMany(mappedBy = "auction", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    private List<Bid> bids = new ArrayList<>();
 
     @Builder
     public Auction(User user, Category category, String title, String description, Long startPrice, Long buyNowPrice,
@@ -71,11 +75,12 @@ public class Auction {
         this.description = description;
         this.startPrice = startPrice;
         this.buyNowPrice = buyNowPrice;
+        this.currentPrice = startPrice;
         this.auctionStartTime = auctionStartTime;
         this.auctionEndTime = auctionEndTime;
         this.status = status;
+        this.images = images;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        this.images = images;
     }
 }

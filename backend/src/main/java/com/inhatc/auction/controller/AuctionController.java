@@ -11,9 +11,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.inhatc.auction.dto.AuctionCreateRequestDTO;
+import com.inhatc.auction.dto.AuctionRequestDTO;
 import com.inhatc.auction.service.AuctionService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
@@ -25,18 +26,21 @@ import lombok.extern.log4j.Log4j2;
 public class AuctionController {
     private final AuctionService auctionService;
 
+    // 경매 목록 조회
     @GetMapping
     public ResponseEntity<?> getAuctionList() {
         return ResponseEntity.status(HttpStatus.OK).body(auctionService.getAuctionList());
     }
 
+    // 경매 상세 조회
     @GetMapping("/{auctionId}")
-    public ResponseEntity<?> getAuctionDetail(@PathVariable Long auctionId) {
-        return ResponseEntity.ok(auctionService.getAuctionDetail(auctionId));
+    public ResponseEntity<?> getAuctionDetail(@PathVariable("auctionId") Long auctionId) {
+        return ResponseEntity.status(HttpStatus.OK).body(auctionService.getAuctionDetail(auctionId));
     }
 
+    // 경매 생성
     @PostMapping
-    public ResponseEntity<?> createAuction(@Valid @ModelAttribute AuctionCreateRequestDTO requestDTO) {
+    public ResponseEntity<?> createAuction(@Valid @ModelAttribute AuctionRequestDTO requestDTO) {
         Long auctionId = this.auctionService.createAuction(requestDTO);
 
         HashMap<String, Long> response = new HashMap<>();
@@ -45,28 +49,11 @@ public class AuctionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    //////////////////////////////////////////////////////////////////////////////////////
-    // @GetMapping("/{auctionId}/bids") // 입찰 내역 조회
-    // public ResponseEntity<?> getAuctionBidList(@PathVariable Long auctionId) {
-    // return ResponseEntity.ok(auctionService.getAuctionBidList(auctionId));
-    // }
+    // 즉시 구매
+    @PostMapping("/{auctionId}/buy-now")
+    public ResponseEntity<?> buyNowAuction(HttpServletRequest request, @PathVariable("auctionId") Long auctionId) {
+        auctionService.buyNowAuction(request, auctionId);
 
-    // @PostMapping("/{auctionId}/bids") // 입찰 생성
-    // public ResponseEntity<?> createAuctionBid(@PathVariable Long auctionId,
-    // @Valid @RequestBody AuctionBidRequestDTO requestDTO) {
-    // return ResponseEntity.ok(auctionService.createAuctionBid(auctionId,
-    // requestDTO));
-    // }
-
-    // @PostMapping("/{auctionId}/purchase") // 즉시 구매
-    // public ResponseEntity<?> purchaseAuction(@PathVariable Long auctionId) {
-    // return ResponseEntity.ok(auctionService.purchaseAuction(auctionId));
-    // }
-
-    // @PatchMapping("/{auctionId}/status") // 경매 상태 변경
-    // public ResponseEntity<?> updateAuctionStatus(@PathVariable Long auctionId,
-    // @RequestBody AuctionStatusRequestDTO requestDTO) {
-    // return ResponseEntity.ok(auctionService.updateAuctionStatus(auctionId,
-    // requestDTO));
-    // }
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
 }
