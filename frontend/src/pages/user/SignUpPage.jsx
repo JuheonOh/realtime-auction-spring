@@ -13,6 +13,7 @@ export default function SignUpPage() {
     password: "",
     confirmPassword: "",
     phone: "",
+    nickname: "",
     agreeTerms: false,
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -48,6 +49,10 @@ export default function SignUpPage() {
       inValid.phone = "전화번호는 필수 입력 사항입니다.";
     } else if (!/^\d{3}-\d{3,4}-\d{4}$/.test(formData.phone)) {
       inValid.phone = "유효한 전화번호를 입력하세요.";
+    }
+
+    if (!formData.nickname.trim()) {
+      inValid.nickname = "닉네임은 필수 입력 사항입니다.";
     }
 
     if (!formData.agreeTerms) {
@@ -109,10 +114,9 @@ export default function SignUpPage() {
 
     try {
       await signUp(formData);
-      
       navigate("/auth/login");
     } catch (err) {
-      console.log(err);
+      setInValid(err.response.data);
     }
   };
 
@@ -193,6 +197,18 @@ export default function SignUpPage() {
                 <input id="phone" name="phone" type="tel" autoComplete="tel" className="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md" placeholder="010-1234-5678" value={formData.phone} onChange={handleChange} />
               </div>
               <InValidAlert inValid={inValid.phone} message={inValid.phone} className="mt-3" />
+            </div>
+            <div>
+              <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">
+                닉네임
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                </div>
+                <input id="nickname" name="nickname" type="text" autoComplete="nickname" className={`focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md ${inValid.nickname ? "border-red-500" : ""}`} placeholder="닉네임" value={formData.nickname} onChange={handleChange} />
+              </div>
+              <InValidAlert inValid={inValid.nickname} message={inValid.nickname} className="mt-3" />
             </div>
             <div>
               <div className="flex items-center pt-3">
