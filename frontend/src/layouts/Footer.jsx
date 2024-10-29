@@ -39,7 +39,8 @@ export default function Footer() {
               <h4 className="text-lg font-semibold mb-4">뉴스레터</h4>
               <p className="text-gray-400 mb-4">최신 경매 정보와 뉴스를 받아보세요.</p>
               <div className="flex">
-                <input type="email" placeholder="이메일 주소" className="flex-grow px-4 py-2 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <label htmlFor="email" className="sr-only">이메일 주소</label>
+                <input type="email" id="email" name="email" placeholder="이메일 주소" className="flex-grow px-4 py-2 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" autoComplete="email" />
                 <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md transition-colors">구독하기</button>
               </div>
             </div>
