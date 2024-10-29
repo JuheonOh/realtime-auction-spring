@@ -27,14 +27,14 @@ export default function Router() {
         <Route element={<Private />}>
           <Route element={<Layout />}>
             <Route path="/user/profile" element={<ProfilePage />} />
-            <Route path="/auctions/new" element={<AuctionCreatePage />} />
+            <Route path="/auctions/create" element={<AuctionCreatePage />} />
           </Route>
         </Route>
 
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/auctions" element={<AuctionListPage />} />
-          <Route path="/auctions/:id/" element={<AuctionDetailPage />} />
+          <Route path="/auctions/:auctionId/" element={<AuctionDetailPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/support" element={<SupportPage />} />
         </Route>
