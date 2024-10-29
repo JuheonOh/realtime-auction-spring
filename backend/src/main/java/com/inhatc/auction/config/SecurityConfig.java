@@ -1,9 +1,8 @@
 package com.inhatc.auction.config;
 
-import com.inhatc.auction.common.exception.CustomAccessDeniedHandler;
-import com.inhatc.auction.common.exception.CustomAuthenticationEntryPoint;
-import com.inhatc.auction.config.jwt.JwtTokenFilter;
-import lombok.RequiredArgsConstructor;
+import java.util.Arrays;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,8 +17,11 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.List;
+import com.inhatc.auction.common.exception.CustomAccessDeniedHandler;
+import com.inhatc.auction.common.exception.CustomAuthenticationEntryPoint;
+import com.inhatc.auction.config.jwt.JwtTokenFilter;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity

@@ -15,35 +15,25 @@ import lombok.RequiredArgsConstructor;
 public class UserService {
     private final UserRepository userRepository;
 
-    /**
-     * User 조회
-     */
-    @Transactional
     public UserResponseDTO findById(Long id) {
         User user = this.userRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. user_id = " + id));
+                () -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다. user_id = " + id));
 
         return new UserResponseDTO(user);
     }
 
-    /**
-     * User 수정
-     */
     @Transactional
     public void update(Long id, UserRequestDTO requestDTO) {
         User user = this.userRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. user_id = " + id));
+                () -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다. user_id = " + id));
 
         this.userRepository.save(user);
     }
 
-    /**
-     * User 삭제
-     */
     @Transactional
     public void delete(Long id) {
         User user = this.userRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. user_id = " + id));
+                () -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다. user_id = " + id));
         this.userRepository.delete(user);
     }
 
