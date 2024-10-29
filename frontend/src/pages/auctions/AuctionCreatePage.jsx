@@ -3,10 +3,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { addAuction } from "../../apis/AuctionAPI";
+import { createAuction } from "../../apis/AuctionAPI";
 import { getCategoryList } from "../../apis/CommonAPI";
 import InputField from "../../components/InputField";
 import InValidAlert from "../../components/InValidAlert";
+import { formatPrice, removeCommas } from "../../utils/formatNumber";
 
 export default function AuctionCreatePage() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function AuctionCreatePage() {
   const [previewImages, setPreviewImages] = useState([]);
   const [categoryList, setCategoryList] = useState([]);
   const [inValid, setInValid] = useState({});
+  const [fileError, setFileError] = useState("");
 
   // 카테고리 목록 가져오기
   const fetchCategoryList = async () => {
@@ -44,12 +46,7 @@ export default function AuctionCreatePage() {
     let newValue = value;
 
     if (name === "startPrice" || name === "buyNowPrice") {
-      if (e.target.value < 0) {
-        return;
-      }
-
-      // 1000 단위마다 콤마 추가
-      newValue = newValue.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      newValue = formatPrice(value);
     }
 
     setInValid((prevInValid) => ({
@@ -75,10 +72,18 @@ export default function AuctionCreatePage() {
       "image/*": [".jpeg", ".jpg", ".png", ".gif", ".webp"],
     },
     maxSize: 10 * 1024 * 1024, // 10MB
+    onDropRejected: (rejectedFiles) => {
+      const oversizedFiles = rejectedFiles.filter((file) => file.errors[0]?.code === "file-too-large").map((file) => file.file.name);
+
+      if (oversizedFiles.length > 0) {
+        setFileError(`${oversizedFiles.length > 1 ? "파일들이" : "파일이"} 10MB 용량 제한을 초과했습니다. \r\n ${oversizedFiles.join("\r\n")} `);
+      }
+    },
   });
 
   // 이미지 업로드
   const handleImageUpload = (files) => {
+    setFileError(""); // 에러 메시지 초기화
     const newImages = files.filter((file) => file.type.startsWith("image/"));
     setFormData((prevData) => ({
       ...prevData,
@@ -121,7 +126,7 @@ export default function AuctionCreatePage() {
       inValid.categoryId = "카테고리는 필수 선택 사항입니다.";
     }
 
-    const startPrice = parseInt(formData.startPrice.replace(/,/g, ""));
+    const startPrice = removeCommas(formData.startPrice);
     if (isNaN(startPrice) || startPrice <= 0) {
       inValid.startPrice = "유효한 경매 시작 가격을 입력하세요.";
     }
@@ -130,9 +135,9 @@ export default function AuctionCreatePage() {
       inValid.startPrice = "경매 시작 가격은 최소 1,000원 이상이어야 합니다.";
     }
 
-    const buyNowPrice = parseInt(formData.buyNowPrice.replace(/,/g, ""));
-    if (buyNowPrice && buyNowPrice <= startPrice && buyNowPrice !== 0) {
-      inValid.buyNowPrice = "즉시 구매 가격은 경매 시작 가격보다 높아야 합니다.";
+    const buyNowPrice = removeCommas(formData.buyNowPrice);
+    if (buyNowPrice && buyNowPrice < startPrice && buyNowPrice !== 0) {
+      inValid.buyNowPrice = "즉시 구매 가격은 경매 시작 가격보다 같거나 높아야 합니다.";
     }
 
     if (!formData.auctionDuration) {
@@ -159,20 +164,22 @@ export default function AuctionCreatePage() {
       title: formData.title,
       description: formData.description,
       categoryId: formData.categoryId === "" ? 0 : parseInt(formData.categoryId),
-      startPrice: formData.startPrice === "" || formData.startPrice === 0 ? 0 : parseInt(formData.startPrice.replace(/,/g, "")),
-      buyNowPrice: formData.buyNowPrice === "" || formData.buyNowPrice === 0 ? 0 : parseInt(formData.buyNowPrice.replace(/,/g, "")),
+      startPrice: formData.startPrice === "" || formData.startPrice === 0 ? 0 : removeCommas(formData.startPrice),
+      buyNowPrice: formData.buyNowPrice === "" || formData.buyNowPrice === 0 ? 0 : removeCommas(formData.buyNowPrice),
       auctionDuration: formData.auctionDuration === "" ? 0 : parseInt(formData.auctionDuration),
       images: formData.images,
     };
 
     try {
-      const response = await addAuction(auctionData);
+      const response = await createAuction(auctionData);
 
       if (response.status === 201) {
         alert("경매 상품이 등록되었습니다.");
         navigate(`/auctions/${response.data.auctionId}`);
       }
     } catch (err) {
+      console.log(err);
+
       setInValid(err.response.data);
     }
   };
@@ -209,7 +216,7 @@ export default function AuctionCreatePage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <InputField name="startPrice" label="경매 시작 가격 (원)" type="text" placeholder="1,000원 이상 입력하세요." value={formData.startPrice} handleChange={handleChange} inValid={inValid} />
-                <InputField name="buyNowPrice" label="즉시 구매 가격 (원, 선택사항)" type="text" placeholder="경매 시작 가격보다 높게 입력하세요." value={formData.buyNowPrice} handleChange={handleChange} inValid={inValid} />
+                <InputField name="buyNowPrice" label="즉시 구매 가격 (원, 선택사항)" type="text" placeholder="경매 시작 가격과 같거나 높게 입력하세요." value={formData.buyNowPrice} handleChange={handleChange} inValid={inValid} />
               </div>
 
               <div>
@@ -218,6 +225,7 @@ export default function AuctionCreatePage() {
                 </label>
                 <select id="auctionDuration" name="auctionDuration" value={formData.duration} onChange={handleChange} className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${inValid.auctionDuration ? "border-red-500" : "border-gray-300"}`}>
                   <option value="">경매 기간 선택</option>
+                  <option value="1">1일</option>
                   <option value="3">3일</option>
                   <option value="5">5일</option>
                   <option value="7">7일</option>
@@ -228,28 +236,35 @@ export default function AuctionCreatePage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">상품 이미지</label>
-                <div {...getRootProps()} className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors ${isDragActive ? "border-blue-500 bg-blue-50" : ""} ${inValid.images ? "border-red-500" : ""}`}>
+                <div
+                  {...getRootProps()}
+                  className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-md transition-colors focus:outline-none focus:border-blue-500 focus:border-solid
+                    ${isDragActive ? "border-blue-500 bg-blue-50" : ""} 
+                    ${inValid.images || fileError ? "border-red-500" : "border-gray-300"}`}
+                >
                   <div className="space-y-1 text-center">
                     <Upload className="mx-auto h-12 w-12 text-gray-400" />
                     <div className="flex text-sm text-gray-600">
-                      <label htmlFor="images" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
+                      <label htmlFor="images" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 ">
                         <span>이미지 업로드</span>
                         <input {...getInputProps()} className="sr-only" />
                       </label>
                       <p className="pl-1">또는 드래그 앤 드롭</p>
                     </div>
-                    <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                    <p className="text-xs text-gray-500">PNG, JPG, GIF (최대 10MB)</p>
+                    <p className="text-xs text-gray-500">이미지 비율 추천 : 1:1</p>
                   </div>
                 </div>
+                <InValidAlert inValid={fileError} message={fileError} />
                 <InValidAlert inValid={inValid.images} message={inValid.images} />
               </div>
 
               {previewImages.length > 0 && (
                 <div className="mt-4 grid grid-cols-3 gap-4">
                   {previewImages.map((image, index) => (
-                    <div key={index} className="relative">
-                      <img src={image} alt={`Preview ${index + 1}`} className="h-24 w-full object-cover rounded-md" />
-                      <button type="button" onClick={() => removeImage(index)} className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1">
+                    <div key={index} className="relative w-full h-full max-h-96 aspect-square rounded-lg bg-gray-100 overflow-hidden">
+                      <img src={image} alt={`업로드 한 ${index + 1}번째 이미지`} className="h-full absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hover:scale-105 transition-transform duration-200" />
+                      <button type="button" onClick={() => removeImage(index)} className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-md transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     </div>

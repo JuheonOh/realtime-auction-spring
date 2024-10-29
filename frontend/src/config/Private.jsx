@@ -1,31 +1,30 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, Outlet } from "react-router-dom";
-import { fetchUser } from "../apis/UserAPI";
+import { getUser } from "../apis/UserAPI";
 import LoadingSpinner from "../components/LoadingSpinner";
-import { RESET_USER, SET_INFO } from "../redux/store/User";
+import { SET_INFO } from "../data/redux/store/User";
 
 const Private = () => {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user);
   const [loading, setLoading] = useState(true);
 
-
   useEffect(() => {
-    if (user.accessToken) {
-      fetchUser()
-        .then((res) => {
-          dispatch(SET_INFO(res.data));
-        })
-        .catch((err) => {
-          console.log(err);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      setLoading(false);
-    }
+    const fetchUser = async () => {
+      if (!user.accessToken) return setLoading(false);
+
+      try {
+        const res = await getUser();
+        dispatch(SET_INFO(res.data));
+      } catch (err) {
+        console.log(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUser();
   }, [dispatch, user.accessToken]);
 
   if (loading) {

@@ -1,72 +1,58 @@
-import { Bell, Clock, DollarSign, Search, Zap } from "lucide-react";
+import { Clock, Search, User } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
+import { getAuctionList } from "../../apis/AuctionAPI";
 import { getCategoryList } from "../../apis/CommonAPI";
-
-// 실제 구현에서는 이 부분을 서버로부터 받아오는 로직으로 대체해야 합니다.
-const mockAuctions = [
-  { id: 1, name: "Vintage Watch", currentBid: 1500, timeLeft: 120, image: "/images/placeholder.svg", category: "액세서리", immediatePurchasePrice: 3000 },
-  { id: 2, name: "Modern Art Painting", currentBid: 5000, timeLeft: 300, image: "/images/placeholder.svg", category: "미술품", immediatePurchasePrice: 10000 },
-  { id: 3, name: "Rare Coin Collection", currentBid: 2000, timeLeft: 600, image: "/images/placeholder.svg", category: "수집품", immediatePurchasePrice: 7000 },
-  { id: 4, name: "Antique Furniture", currentBid: 3500, timeLeft: 450, image: "/images/placeholder.svg", category: "가구", immediatePurchasePrice: 7000 },
-  { id: 5, name: "Luxury Handbag", currentBid: 2500, timeLeft: 180, image: "/images/placeholder.svg", category: "가방", immediatePurchasePrice: 10000 },
-  { id: 6, name: "Classic Car", currentBid: 15000, timeLeft: 900, image: "/images/placeholder.svg", category: "자동차", immediatePurchasePrice: 30000 },
-];
+import { SET_AUCTION_LIST, SET_CATEGORY_LIST } from "../../data/redux/store/Auction";
+import useInterval from "../../hooks/useInterval";
+import { addCommas } from "../../utils/formatNumber";
+import formatTime from "../../utils/formatTime";
 
 export default function AuctionListPage() {
-  const [auctions, setAuctions] = useState(mockAuctions);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [sortBy, setSortBy] = useState("timeLeft");
+  const [sortBy, setSortBy] = useState("newAuction");
 
-  const [categoryList, setCategoryList] = useState([]);
-
-  const fetchCategoryList = async () => {
-    const response = await getCategoryList();
-
-    if (response.status === 200) {
-      setCategoryList(response.data);
-    } else {
-      console.error("Failed to fetch category list");
-    }
-  };
+  const dispatch = useDispatch();
+  const categoryList = useSelector((state) => state.auction.categoryList);
+  const auctionList = useSelector((state) => state.auction.auctionList);
 
   useEffect(() => {
+    const fetchCategoryList = async () => {
+      const response = await getCategoryList();
+      dispatch(SET_CATEGORY_LIST(response.data));
+    };
+
+    const fetchAuctionList = async () => {
+      const response = await getAuctionList();
+      dispatch(SET_AUCTION_LIST(response.data));
+    };
+
     fetchCategoryList();
+    fetchAuctionList();
+  }, [dispatch]);
 
-    // 실시간 업데이트를 시뮬레이션합니다.
-    const timer = setInterval(() => {
-      setAuctions((prevAuctions) =>
-        prevAuctions.map((auction) => ({
-          ...auction,
-          currentBid: auction.currentBid + Math.floor(Math.random() * 100),
-          timeLeft: Math.max(0, auction.timeLeft - 1),
-        }))
-      );
-    }, 1000);
+  useInterval(() => {
+    dispatch(SET_AUCTION_LIST(auctionList.map((auction) => ({ ...auction, auctionLeftTime: auction.auctionLeftTime - 1 }))));
+  }, 1000);
 
-    return () => clearInterval(timer);
-  }, []);
-
-  const filteredAndSortedAuctions = auctions
-    .filter((auction) => auction.name.toLowerCase().includes(searchTerm.toLowerCase()) && (selectedCategory === "All" || auction.category === selectedCategory))
+  const filteredAndSortedAuctions = auctionList
+    .filter((auction) => auction.title.toLowerCase().includes(searchTerm.toLowerCase()) && (selectedCategory === "All" || auction.categoryName === selectedCategory))
     .sort((a, b) => {
-      if (sortBy === "timeLeft") return a.timeLeft - b.timeLeft;
-      if (sortBy === "currentBid") return b.currentBid - a.currentBid;
+      if (sortBy === "newAuction") return new Date(b.auctionStartTime) - new Date(a.auctionStartTime);
+      if (sortBy === "highPrice") return b.currentPrice - a.currentPrice;
+      if (sortBy === "lowPrice") return a.currentPrice - b.currentPrice;
+      if (sortBy === "fastEnd") return new Date(a.auctionEndTime) - new Date(b.auctionEndTime);
+      if (sortBy === "slowEnd") return new Date(b.auctionEndTime) - new Date(a.auctionEndTime);
+      if (sortBy === "highBidsCount") return b.bidsCount - a.bidsCount;
+      if (sortBy === "lowBidsCount") return a.bidsCount - b.bidsCount;
       return 0;
     });
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">실시간 경매</h1>
-        <div className="flex space-x-2">
-          <button className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors" title="알림">
-            <Bell className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
-
+      <h1 className="mb-8 text-3xl font-bold">실시간 경매</h1>
       <div className="flex flex-col md:flex-row gap-4 mb-8">
         <div className="flex-grow relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -75,69 +61,74 @@ export default function AuctionListPage() {
         <select className="px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
           <option value="All">전체</option>
           {categoryList.map((category) => (
-            <option key={category.id} value={category.id}>
+            <option key={category.id} value={category.name}>
               {category.name}
             </option>
           ))}
         </select>
         <select className="px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="timeLeft">남은 시간순</option>
-          <option value="currentBid">현재 입찰가순</option>
+          <option value="newAuction">신상품순</option>
+          <option value="highPrice">가격 높은순</option>
+          <option value="lowPrice">가격 낮은순</option>
+          <option value="fastEnd">종료 빠른순</option>
+          <option value="slowEnd">종료 느린순</option>
+          <option value="highBidsCount">입찰 많은순</option>
+          <option value="lowBidsCount">입찰 적은순</option>
         </select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredAndSortedAuctions.map((auction) => (
-          <Link to={`/auctions/${auction.id}`} key={auction.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col justify-between hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
-            <div className="relative w-full h-48">
-              <img src={auction.image} alt={auction.name} className="w-full h-48 object-cover" />
-              <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-opacity duration-300 flex items-center justify-center">
-                <span className="text-white text-lg font-bold opacity-0 hover:opacity-100 transition-opacity duration-300">자세히 보기</span>
-              </div>
-            </div>
-            <div className="p-4">
-              <h2 className="text-xl font-semibold mb-2">{auction.name}</h2>
-              <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mb-2">{auction.category}</span>
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center">
-                  <DollarSign className="w-5 h-5 text-green-500 mr-1" />
-                  <span className="font-bold">{auction.currentBid.toLocaleString()}원</span>
-                </div>
-                <div className="flex items-center">
-                  <Clock className="w-5 h-5 text-red-500 mr-1" />
-                  {auction.timeLeft > 0 ? (
-                    <span>
-                      {Math.floor(auction.timeLeft / 60)}:{(auction.timeLeft % 60).toString().padStart(2, "0")}
-                    </span>
-                  ) : (
-                    <span className="text-red-500 font-bold">경매 종료</span>
-                  )}
+      <div className="grid grid-cols-4 gap-6">
+        {filteredAndSortedAuctions.map((auction, index) => (
+          <div key={index} className="flex flex-col justify-between h-full bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 transform hover:shadow-lg hover:-translate-y-1 hover:scale-105">
+            {/* 상품 이미지 */}
+            <Link to={`/auctions/${auction.id}`}>
+              <div className="relative w-full h-48">
+                <img src={`http://localhost:8080/auction/images/${auction.image}`} alt={auction.title} className="w-full h-48 object-cover" onError={(e) => (e.target.src = `http://localhost:8080/auction/images/placeholder.svg`)} loading="lazy" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group hover:bg-opacity-30 transition-opacity duration-300">
+                  <span className="text-white text-xl font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300">자세히 보기</span>
                 </div>
               </div>
-              {auction.immediatePurchasePrice && auction.timeLeft > 0 && (
-                <div className="flex justify-end items-center mt-2">
-                  <Zap className="w-5 h-5 text-yellow-500 mr-1" />
-                  <span className="text-sm font-semibold">즉시 구매가: {auction.immediatePurchasePrice.toLocaleString()}원</span>
+            </Link>
+
+            {/* 상품 정보 */}
+            <div className="p-4 flex-grow flex flex-col gap-y-4">
+              {/* 상품 제목 */}
+              <h2 className="h-16 text-xl font-semibold line-clamp-2 text-ellipsis break-keep">
+                <Link to={`/auctions/${auction.id}`}>{auction.title}</Link>
+              </h2>
+
+              {/* 상품 카테고리 및 판매자 정보 */}
+              <div className="flex items-center justify-between">
+                <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700">{auction.categoryName}</span>
+                <Link to={`/users/${auction.userId}`} className="flex items-center">
+                  <User className="w-5 h-5 text-gray-500 mr-1" />
+                  <span className="text-sm">{auction.nickname}</span>
+                </Link>
+              </div>
+
+              {/* 상품 가격 및 즉시 구매가 */}
+              <div className="flex flex-col gap-y-1 mt-auto">
+                {auction.buyNowPrice > 0 && (
+                  <div className="flex items-center justify-end gap-x-2">
+                    <span className="font-semibold text-red-500">즉시 구매가</span>
+                    <span className="text-lg font-bold">{addCommas(auction.buyNowPrice)}원</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-end gap-x-2">
+                  <span className="font-semibold text-blue-500">현재 입찰가</span>
+                  <span className="text-lg font-bold">{addCommas(auction.currentPrice)}원</span>
                 </div>
-              )}
+              </div>
             </div>
-            <div className="px-4 py-3 bg-gray-50">
-              {auction.timeLeft > 0 ? (
-                <div className="flex gap-2">
-                  <button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors duration-300 transform hover:scale-105">입찰하기</button>
-                  {auction.immediatePurchasePrice && (
-                    <button className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors duration-300 transform hover:scale-105" title={`${auction.immediatePurchasePrice.toLocaleString()}원에 즉시 구매`}>
-                      즉시 구매
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <button className="w-full bg-gray-300 text-gray-500 font-bold py-2 px-4 rounded cursor-not-allowed" disabled>
-                  경매 종료
-                </button>
-              )}
+
+            {/* 상품 남은 시간 */}
+            <div className="px-4 py-3 bg-gray-100">
+              <div className="flex gap-2 items-center justify-center">
+                <Clock className="w-5 h-5 text-red-500" />
+                {auction.auctionLeftTime > 0 ? <span>{formatTime(auction.auctionLeftTime, 2)}</span> : <span className="text-red-500 font-bold">경매 종료</span>}
+              </div>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
     </div>

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { clearCookie, getCookie, setCookie } from "../storage/Cookie";
+import { clearCookie, getCookie, setCookie } from "../data/storage/Cookie";
 
 const BASE_URL = "http://localhost:8080";
 const TOKEN_TYPE = "Bearer";
@@ -24,6 +24,26 @@ UserApi.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// 응답 인터셉터: 토큰 만료 시 갱신 및 재요청
+UserApi.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const newAccessToken = await refreshAccessToken();
+        originalRequest.headers["Authorization"] = `${TOKEN_TYPE} ${newAccessToken}`;
+        return UserApi(originalRequest);
+      } catch (refreshError) {
+        return Promise.reject(refreshError);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 // 토큰 갱신
 const refreshAccessToken = async () => {
   try {
@@ -46,24 +66,11 @@ const refreshAccessToken = async () => {
   }
 };
 
-// 응답 인터셉터: 토큰 만료 시 갱신 및 재요청
-UserApi.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const newAccessToken = await refreshAccessToken();
-        originalRequest.headers["Authorization"] = `${TOKEN_TYPE} ${newAccessToken}`;
-        return UserApi(originalRequest);
-      } catch (refreshError) {
-        return Promise.reject(refreshError);
-      }
-    }
-    return Promise.reject(error);
+export const getUser = async () => {
+  try {
+    const response = await UserApi.get(`/api/users`);
+    return response;
+  } catch (error) {
+    throw error;
   }
-);
-
-export const fetchUser = () => UserApi.get(`/api/users`);
+};
