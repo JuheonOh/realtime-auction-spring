@@ -7,6 +7,7 @@ import javax.crypto.SecretKey;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import com.inhatc.auction.config.SecurityConstants;
 
@@ -18,6 +19,7 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
 import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
@@ -61,6 +63,16 @@ public class JwtTokenProvider {
 
     public String generateRefreshToken(Authentication authentication) {
         return generateToken(authentication, jwtRefreshTokenExpirationTime);
+    }
+
+    public String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader(SecurityConstants.TOKEN_HEADER);
+
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(SecurityConstants.TOKEN_PREFIX)) {
+            return bearerToken.substring(SecurityConstants.TOKEN_PREFIX.length());
+        }
+
+        return null;
     }
 
     public Long getUserIdFromToken(String token) {

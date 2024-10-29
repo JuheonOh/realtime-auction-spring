@@ -30,6 +30,7 @@ public class User {
     private String password;
     private String name;
     private String phone;
+    private String nickname;
 
     @Enumerated(EnumType.STRING)
     private Role role;
@@ -37,21 +38,22 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
     private Auth auth;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Auction> auctions;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Bid> bids;
 
     @Builder
-    public User(String email, String password, String name, String phone, Role role) {
+    public User(String email, String password, String name, String phone, String nickname, Role role) {
         this.email = email;
         this.password = password;
         this.name = name;
         this.phone = phone;
+        this.nickname = nickname;
         this.role = role;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();

@@ -8,10 +8,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import com.inhatc.auction.config.SecurityConstants;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
@@ -31,7 +28,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
-        String accessToken = getTokenFromRequest(request);
+        String accessToken = jwtTokenProvider.getTokenFromRequest(request);
         if (accessToken != null) {
             try {
                 if (jwtTokenProvider.validateToken(accessToken)) {
@@ -49,16 +46,6 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
-    }
-
-    private String getTokenFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader(SecurityConstants.TOKEN_HEADER);
-
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(SecurityConstants.TOKEN_PREFIX)) {
-            return bearerToken.substring(SecurityConstants.TOKEN_PREFIX.length());
-        }
-
-        return null;
     }
 
     private UsernamePasswordAuthenticationToken getAuthenticationFromToken(String token) {

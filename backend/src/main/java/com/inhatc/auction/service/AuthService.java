@@ -1,5 +1,6 @@
 package com.inhatc.auction.service;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 
 import org.springframework.http.HttpStatus;
@@ -73,6 +74,8 @@ public class AuthService {
                 .tokenType(SecurityConstants.TOKEN_TYPE.strip())
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         this.authRepository.save(auth);
@@ -99,6 +102,7 @@ public class AuthService {
                 .password(requestDTO.getPassword())
                 .name(requestDTO.getName())
                 .phone(requestDTO.getPhone())
+                .nickname(requestDTO.getNickname())
                 .role(Role.ROLE_USER)
                 .build();
 

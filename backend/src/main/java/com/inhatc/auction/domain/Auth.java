@@ -1,15 +1,26 @@
 package com.inhatc.auction.domain;
 
-import jakarta.persistence.*;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.OneToOne;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @NoArgsConstructor
 @Getter
+@Builder
 @Entity
+@AllArgsConstructor
 public class Auth {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,19 +37,9 @@ public class Auth {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "user_id")
     private User user;
-
-    @Builder
-    public Auth(User user, String tokenType, String accessToken, String refreshToken) {
-        this.user = user;
-        this.tokenType = tokenType;
-        this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
 
     public void updateAccessToken(String accessToken) {
         this.accessToken = accessToken;

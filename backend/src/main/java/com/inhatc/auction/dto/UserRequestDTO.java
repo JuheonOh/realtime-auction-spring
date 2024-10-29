@@ -1,6 +1,7 @@
 package com.inhatc.auction.dto;
 
 import com.inhatc.auction.common.validation.EmailUnique;
+import com.inhatc.auction.common.validation.NicknameUnique;
 import com.inhatc.auction.common.validation.PasswordMatches;
 import com.inhatc.auction.common.validation.ValidPhoneNumber;
 
@@ -29,6 +30,10 @@ public class UserRequestDTO {
     @NotBlank(message = "전화번호를 입력해 주세요.")
     @ValidPhoneNumber
     private String phone;
+
+    @NotBlank(message = "닉네임을 입력해 주세요.")
+    @NicknameUnique
+    private String nickname;
 
     @AssertTrue(message = "이용약관과 개인정보처리방침에 동의해야 합니다.")
     private boolean agreeTerms;

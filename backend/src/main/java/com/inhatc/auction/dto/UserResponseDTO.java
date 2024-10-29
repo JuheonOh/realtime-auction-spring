@@ -13,6 +13,7 @@ public class UserResponseDTO {
     private String email;
     private String name;
     private String phone;
+    private String nickname;
     private String role;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -23,6 +24,7 @@ public class UserResponseDTO {
         this.email = entity.getEmail();
         this.name = entity.getName();
         this.phone = entity.getPhone();
+        this.nickname = entity.getNickname();
         this.role = entity.getRole().name();
         this.createdAt = entity.getCreatedAt();
         this.updatedAt = entity.getUpdatedAt();
