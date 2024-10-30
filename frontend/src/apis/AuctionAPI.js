@@ -1,11 +1,11 @@
 import axios from "axios";
 import { clearCookie, getCookie, setCookie } from "../data/storage/Cookie";
+import { API_SERVER_URL } from "../utils/constant";
 
-const BASE_URL = "http://localhost:8080";
 const TOKEN_TYPE = "Bearer";
 
 export const AuctionApi = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_SERVER_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -47,7 +47,7 @@ AuctionApi.interceptors.response.use(
 const refreshAccessToken = async () => {
   try {
     const refreshToken = getCookie("refreshToken");
-    const response = await axios.get(`${BASE_URL}/api/auth/refresh`, {
+    const response = await axios.get(`${API_SERVER_URL}/api/auth/refresh`, {
       headers: {
         REFRESH_TOKEN: refreshToken,
       },
@@ -71,7 +71,7 @@ const refreshAccessToken = async () => {
 // 경매 목록 조회
 export const getAuctionList = async () => {
   try {
-    const response = await axios.get(`${BASE_URL}/api/auctions`);
+    const response = await axios.get(`${API_SERVER_URL}/api/auctions`);
     return response;
   } catch (error) {
     throw error;
@@ -81,7 +81,7 @@ export const getAuctionList = async () => {
 // 주목할 만한 경매 조회
 export const getFeaturedAuctions = async () => {
   try {
-    const response = await axios.get(`${BASE_URL}/api/auctions/featured`);
+    const response = await axios.get(`${API_SERVER_URL}/api/auctions/featured`);
     return response;
   } catch (error) {
     throw error;
@@ -91,7 +91,7 @@ export const getFeaturedAuctions = async () => {
 // 경매 상세 조회
 export const getAuctionDetail = async (auctionId) => {
   try {
-    const response = await axios.get(`${BASE_URL}/api/auctions/${auctionId}`);
+    const response = await axios.get(`${API_SERVER_URL}/api/auctions/${auctionId}`);
     return response;
   } catch (error) {
     throw error;
@@ -101,7 +101,7 @@ export const getAuctionDetail = async (auctionId) => {
 // 입찰 내역 조회
 export const getBidList = async (auctionId) => {
   try {
-    const response = await axios.get(`${BASE_URL}/api/bids/${auctionId}`);
+    const response = await axios.get(`${API_SERVER_URL}/api/bids/${auctionId}`);
     return response;
   } catch (error) {
     throw error;
@@ -111,7 +111,7 @@ export const getBidList = async (auctionId) => {
 // 입찰 스트림 조회
 export const getAuctionBidStream = async (auctionId) => {
   try {
-    const eventSource = new EventSource(`${BASE_URL}/api/auctions/${auctionId}/bids-stream`);
+    const eventSource = new EventSource(`${API_SERVER_URL}/api/auctions/${auctionId}/bids-stream`);
     return eventSource;
   } catch (error) {
     throw error;
