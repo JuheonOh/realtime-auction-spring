@@ -2,14 +2,14 @@ import { Clock, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { addCommas } from "../utils/formatNumber";
 import formatTime from "../utils/formatTime";
-
+import { IMAGE_URL } from "../utils/constant";
 export default function AuctionCard({ auction }) {
   return (
     <div className="flex flex-col justify-between h-full bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 transform hover:shadow-lg hover:-translate-y-1 hover:scale-105">
       {/* 상품 이미지 */}
       <Link to={`/auctions/${auction.id}`}>
         <div className="relative w-full h-48">
-          <img src={`http://localhost:8080/auction/images/${auction.image}`} alt={auction.title} className="w-full h-48 object-cover" onError={(e) => (e.target.src = `http://localhost:8080/auction/images/placeholder.svg`)} loading="lazy" />
+          <img src={`${IMAGE_URL}/${auction.image}`} alt={auction.title} className="w-full h-full object-cover" onError={(e) => (e.target.src = `${IMAGE_URL}/placeholder.svg`)} loading="lazy" />
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group hover:bg-opacity-30 transition-opacity duration-300">
             <span className="text-white text-xl font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300">자세히 보기</span>
           </div>

@@ -14,6 +14,7 @@ import { clearCookie } from "../../data/storage/Cookie";
 import useInterval from "../../hooks/useInterval";
 import { addCommas, formatNumberInput } from "../../utils/formatNumber";
 import formatTime from "../../utils/formatTime";
+import { IMAGE_URL } from "../../utils/constant";
 
 // TODO:
 // 1. 입찰 버튼 클릭 시 입찰 요청 후 입찰 성공 시 입찰 가격을 업데이트할 지 아니면 입찰 성공 후 sse 로 입찰 데이터를 받아와서 업데이트할 지
@@ -394,14 +395,14 @@ export default function AuctionDetail() {
             <section className="flex flex-col gap-y-2">
               {/* 메인 이미지 */}
               <div className="aspect-square w-full rounded-lg relative border border-gray-200 bg-gray-100 overflow-hidden">
-                <img src={`http://localhost:8080/auction/images/${auction.images[selectedImage].filePath}`} alt={auction.images[selectedImage].fileName} className="w-full h-full object-contain" />
+                <img src={`${IMAGE_URL}/${auction.images[selectedImage].filePath}`} alt={auction.images[selectedImage].fileName} className="w-full h-full object-contain" />
               </div>
 
               {/* 이미지 슬라이드 */}
               <div className="flex p-2 gap-x-2 overflow-x-auto overflow-y-hidden image-scroll-container" ref={imageContainerRef} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}>
                 {auction.images.map((image, index) => (
                   <div key={index} className={`w-24 h-24 flex-shrink-0 rounded-md overflow-hidden cursor-pointer ${selectedImage === index ? "ring-2 ring-blue-500" : "border border-gray-200"}`}>
-                    <img src={`http://localhost:8080/auction/images/${image.filePath}`} alt={image.fileName} className="w-full h-full object-cover" onClick={(e) => setSelectedImage(index)} onDragStart={(e) => e.preventDefault()} />
+                    <img src={`${IMAGE_URL}/${image.filePath}`} alt={image.fileName} className="w-full h-full object-cover" onClick={(e) => setSelectedImage(index)} onDragStart={(e) => e.preventDefault()} />
                   </div>
                 ))}
               </div>
@@ -530,7 +531,7 @@ export default function AuctionDetail() {
               <div className="border rounded-lg shadow-md px-4 py-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-x-4">
-                    <img src={`http://localhost:8080/auction/images/placeholder.svg`} alt="판매자 프로필" className="rounded-full w-14 h-14" />
+                    <img src={`${IMAGE_URL}/placeholder.svg`} alt="판매자 프로필" className="rounded-full w-14 h-14" />
                     <div>
                       <h2 className="font-semibold">{auction.nickname}</h2>
                       <div className="flex items-center">
