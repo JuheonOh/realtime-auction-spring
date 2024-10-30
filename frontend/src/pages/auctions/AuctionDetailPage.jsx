@@ -12,9 +12,9 @@ import SuccessAlert from "../../components/SuccessAlert";
 import { SET_INFO } from "../../data/redux/store/User";
 import { clearCookie } from "../../data/storage/Cookie";
 import useInterval from "../../hooks/useInterval";
+import { IMAGE_URL } from "../../utils/constant";
 import { addCommas, formatNumberInput } from "../../utils/formatNumber";
 import formatTime from "../../utils/formatTime";
-import { IMAGE_URL } from "../../utils/constant";
 
 // TODO:
 // 1. 입찰 버튼 클릭 시 입찰 요청 후 입찰 성공 시 입찰 가격을 업데이트할 지 아니면 입찰 성공 후 sse 로 입찰 데이터를 받아와서 업데이트할 지
@@ -42,6 +42,8 @@ export default function AuctionDetail() {
 
   const [auction, setAuction] = useState();
   const [bidData, setBidData] = useState([]);
+  const [transaction, setTransaction] = useState();
+
   const [selectedImage, setSelectedImage] = useState(0);
   const [bidAmount, setBidAmount] = useState(0);
 
@@ -55,7 +57,6 @@ export default function AuctionDetail() {
   const [showBuyNowSuccess, setShowBuyNowSuccess] = useState(false);
 
   const [inValid, setInValid] = useState({});
-  const [auctionLeftTime, setAuctionLeftTime] = useState(auction?.auctionLeftTime || 0);
   const [highestBidderNickname, setHighestBidderNickname] = useState("없음");
   const [isHighestBidder, setIsHighestBidder] = useState(false);
 
@@ -67,7 +68,7 @@ export default function AuctionDetail() {
         const userInfo = await getUser();
         dispatch(SET_INFO(userInfo.data));
       } catch (err) {
-        console.log(err);
+        console.error(err);
         clearCookie();
       }
     };
@@ -81,18 +82,22 @@ export default function AuctionDetail() {
     const fetchAuctionDetail = async () => {
       try {
         const auctionDetail = await getAuctionDetail(auctionId);
+        if (auctionDetail.data) {
+          setAuction(auctionDetail.data);
+        }
+
+        if (auctionDetail.data.transaction) {
+          setTransaction(auctionDetail.data.transaction);
+        }
+
         const bids = auctionDetail.data.bids.map((data) => ({ ...data, bidTime: new Date(data.bidTime) }));
-
-        setAuction(auctionDetail.data);
-        setAuctionLeftTime(auctionDetail.data.auctionLeftTime);
-
         if (bids.length > 0) {
-          setIsHighestBidder(bids[bids.length - 1].userId === user.info.id);
-          setHighestBidderNickname(auctionDetail.data.highestBidderNickname);
           setBidData(bids);
+          setIsHighestBidder(bids[bids.length - 1].userId === user.info.id);
+          setHighestBidderNickname(bids[bids.length - 1].nickname);
         }
       } catch (err) {
-        console.log(err);
+        console.error(err);
         setIsError(true);
       } finally {
         setIsLoading(false);
@@ -104,8 +109,8 @@ export default function AuctionDetail() {
 
   // 1초마다 시간 감소
   useInterval(() => {
-    if (auctionLeftTime > 0) {
-      setAuctionLeftTime((prev) => prev - 1);
+    if (auction?.auctionLeftTime > 0) {
+      setAuction((prev) => ({ ...prev, auctionLeftTime: prev.auctionLeftTime - 1 }));
     }
   }, 1000);
 
@@ -117,19 +122,21 @@ export default function AuctionDetail() {
     const userId = user?.info?.id || null;
     const fetchBidStream = async () => {
       try {
+        // SSE 연결
         bidStream = await getAuctionBidStream(auctionId);
 
-        // 연결 성공
+        // 연결 성공 이벤트
         bidStream.addEventListener("connect", (e) => {
           console.log(e.data);
         });
 
-        // 서버로부터 남은 시간 수신
+        // 서버 시간 수신 이벤트
         bidStream.addEventListener("time", (e) => {
-          setAuctionLeftTime(e.data);
+          const auctionLeftTime = e.data > 0 ? e.data : 0;
+          setAuction((prev) => ({ ...prev, auctionLeftTime }));
         });
 
-        // 입찰 데이터 수신
+        // 입찰 데이터 수신 이벤트
         bidStream.addEventListener("bid", (e) => {
           const bid = JSON.parse(e.data);
 
@@ -151,33 +158,49 @@ export default function AuctionDetail() {
             setShowBidSuccess(false);
             setIsHighestBidder(false);
           } else {
+            // 본인이 입찰한 경우 최고입찰자 상태 업데이트
             setIsHighestBidder(true);
           }
 
-          // 경매 종료 서버 시간으로 업데이트
-          setAuctionLeftTime(bid.auctionLeftTime);
+          // 남은 시간 업데이트
+          setAuction((prev) => ({ ...prev, auctionLeftTime: bid.auctionLeftTime }));
 
           // 최고입찰자 닉네임 업데이트
           setHighestBidderNickname(bid.nickname);
         });
 
-        // 경매 종료 알림 (즉시 구매 시 사용)
-        bidStream.addEventListener("ended", (e) => {
-          setAuction((prev) => ({ ...prev, status: "ENDED" }));
+        // 경매 종료 알림 이벤트 (즉시 구매 시 사용)
+        bidStream.addEventListener("buy-now", (e) => {
+          const buyNow = JSON.parse(e.data);
+
+          setTransaction((prev) => ({
+            ...prev,
+            userId: buyNow.userId,
+            nickname: buyNow.nickname,
+            status: buyNow.status,
+          }));
+
+          setAuction((prev) => ({
+            ...prev,
+            status: "ENDED",
+            auctionLeftTime: 0,
+            successfulPrice: buyNow.finalPrice,
+          }));
         });
 
-        // 재연결 시도
+        // 재연결 시도 이벤트
         bidStream.addEventListener("error", (e) => {
-          console.log(e.data);
+          console.error(e.data);
           fetchBidStream();
         });
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     };
 
     fetchBidStream();
 
+    // 다른 페이지로 이동 시 SSE 연결 해제
     return () => {
       if (bidStream) {
         bidStream.close();
@@ -187,19 +210,15 @@ export default function AuctionDetail() {
 
   // 입찰 금액 단위 업데이트
   useEffect(() => {
-    if (!auction) return;
+    if (!auction?.startPrice || !auction?.currentPrice) return;
 
     // 첫 입찰자인 경우 시작가로 설정, 아니면 현재가 + 입찰단위
-    if (bidData.length === 0) {
-      setBidAmount(auction.startPrice);
-    } else {
-      setBidAmount(auction.currentPrice + bidUnit(auction.currentPrice));
-    }
-  }, [auction, bidData.length]);
+    setBidAmount(bidData.length === 0 ? auction.startPrice : auction.currentPrice + bidUnit(auction.currentPrice));
+  }, [auction?.startPrice, auction?.currentPrice, bidData.length]);
 
   // 입찰 금액 유효성 검사
   const validateBidAmount = () => {
-    if (!auction) return false;
+    if (!auction?.startPrice || !auction?.currentPrice) return false;
 
     const inValid = {};
 
@@ -285,7 +304,7 @@ export default function AuctionDetail() {
         setShowBidSuccess(true);
       }
     } catch (err) {
-      console.log(err);
+      console.error(err);
       setInValid({ bidAmount: err.response.data.message });
     }
   };
@@ -305,14 +324,25 @@ export default function AuctionDetail() {
         const res = await buyNowAuction(auctionId, user.info.id);
         if (res?.status === 201) {
           setShowBuyNowSuccess(true);
+
+          setTransaction((prev) => ({
+            ...prev,
+            userId: user.info.id,
+            nickname: user.info.nickname,
+            finalPrice: auction.buyNowPrice,
+            status: "COMPLETED",
+          }));
+
           setAuction((prev) => ({
             ...prev,
             status: "ENDED",
+            auctionLeftTime: 0,
+            successfulPrice: prev.buyNowPrice,
           }));
         }
       } catch (err) {
         setInValid({ bidAmount: err.response.data.message });
-        console.log(err);
+        console.error(err);
       }
     }
   };
@@ -416,14 +446,25 @@ export default function AuctionDetail() {
               {/* 가격 및 시간 정보 */}
               <div className="bg-gray-50 border rounded-lg shadow-md p-4">
                 <div className="grid grid-cols-2 gap-6">
-                  {/* 현재 입찰가 */}
-                  <div className="flex flex-col justify-between gap-y-4 border-b border-gray-300 p-2">
-                    <div className="flex items-center gap-2">
-                      <Gavel className="w-5 h-5 text-blue-500" />
-                      <span className="font-bold text-lg text-gray-700">현재 입찰가</span>
+                  {/* 경매 완료 시 최종 거래가 표시 */}
+                  {transaction && transaction.status === "COMPLETED" ? (
+                    <div className="flex flex-col justify-between gap-y-4 border-b border-gray-300 p-2">
+                      <div className="flex items-center gap-2">
+                        <Gavel className="w-5 h-5 text-blue-500" />
+                        <span className="font-bold text-lg text-gray-700">최종 거래가</span>
+                      </div>
+                      <span className={`font-bold text-blue-600 block text-right ${auction.buyNowPrice.toString().length > 12 ? "text-xl" : "text-2xl"}`}>{auction.buyNowPrice.toLocaleString()}원</span>
                     </div>
-                    <span className={`font-bold text-blue-600 block text-right ${auction.currentPrice.toString().length > 12 ? "text-xl" : "text-2xl"}`}>{auction.currentPrice.toLocaleString()}원</span>
-                  </div>
+                  ) : (
+                    // 현재 입찰가 표시
+                    <div className="flex flex-col justify-between gap-y-4 border-b border-gray-300 p-2">
+                      <div className="flex items-center gap-2">
+                        <Gavel className="w-5 h-5 text-blue-500" />
+                        <span className="font-bold text-lg text-gray-700">현재 입찰가</span>
+                      </div>
+                      <span className={`font-bold text-blue-600 block text-right ${auction.currentPrice.toString().length > 12 ? "text-xl" : "text-2xl"}`}>{auction.currentPrice.toLocaleString()}원</span>
+                    </div>
+                  )}
 
                   {/* 즉시 구매가 */}
                   <div className="flex flex-col justify-between gap-y-4 border-b border-gray-300 p-2">
@@ -434,14 +475,25 @@ export default function AuctionDetail() {
                     <span className={`font-bold text-red-600 block text-right ${auction.buyNowPrice.toString().length > 12 ? "text-xl" : "text-2xl"}`}>{auction.buyNowPrice > 0 ? `${auction.buyNowPrice.toLocaleString()}원` : "없음"}</span>
                   </div>
 
-                  {/* 최고입찰자 */}
-                  <div className="flex flex-col justify-between gap-y-4 border-b border-gray-300 p-2">
-                    <div className="flex items-center gap-x-2">
-                      <User className="w-5 h-5 text-gray-500" />
-                      <span className="font-bold text-lg text-gray-700">최고입찰자</span>
+                  {/* 최종 낙찰자 */}
+                  {transaction && transaction.status === "COMPLETED" ? (
+                    <div className="flex flex-col justify-between gap-y-4 border-b border-gray-300 p-2">
+                      <div className="flex items-center gap-x-2">
+                        <User className="w-5 h-5 text-gray-500" />
+                        <span className="font-bold text-lg text-gray-700">최종 낙찰자</span>
+                      </div>
+                      <span className={`font-semibold text-lg text-right ${transaction.userId === user.info.id ? "text-emerald-500" : ""}`}>{transaction.userId === user.info.id ? `${user.info.nickname} (본인)` : transaction.nickname}</span>
                     </div>
-                    <span className={`font-semibold text-lg text-right ${isHighestBidder ? "text-emerald-500" : ""}`}>{isHighestBidder ? `${user.info.nickname} (본인)` : highestBidderNickname}</span>
-                  </div>
+                  ) : (
+                    // 최고 입찰자
+                    <div className="flex flex-col justify-between gap-y-4 border-b border-gray-300 p-2">
+                      <div className="flex items-center gap-x-2">
+                        <User className="w-5 h-5 text-gray-500" />
+                        <span className="font-bold text-lg text-gray-700">최고 입찰자</span>
+                      </div>
+                      <span className={`font-semibold text-lg text-right ${isHighestBidder ? "text-emerald-500" : ""}`}>{isHighestBidder ? `${user.info.nickname} (본인)` : highestBidderNickname}</span>
+                    </div>
+                  )}
 
                   {/* 남은 시간 */}
                   <div className="flex flex-col justify-between gap-y-4 border-b border-gray-300 p-2">
@@ -449,7 +501,7 @@ export default function AuctionDetail() {
                       <Clock className="w-5 h-5 text-black" />
                       <span className="font-bold text-lg text-gray-700">남은 시간</span>
                     </div>
-                    <span className="font-bold text-xl block text-right">{formatTime(auctionLeftTime)}</span>
+                    <span className="font-bold text-xl block text-right">{formatTime(auction.auctionLeftTime)}</span>
                   </div>
 
                   {/* 입찰/관심 현황 */}
@@ -473,8 +525,8 @@ export default function AuctionDetail() {
                   <Link to="/auth/login">
                     <BlurOverlay message="로그인 후 이용할 수 있습니다." />
                   </Link>
-                ) : (auction.auctionLeftTime <= 0 || auction.status === "ENDED") && !showBuyNowSuccess ? (
-                  <BlurOverlay message="이미 종료된 경매입니다." />
+                ) : transaction && transaction.status === "COMPLETED" ? (
+                  <BlurOverlay message="종료된 경매입니다." />
                 ) : (
                   user.info.id === auction.userId && <BlurOverlay message="본인이 등록한 경매에는 입찰할 수 없습니다." />
                 )}

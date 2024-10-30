@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -29,6 +30,8 @@ import com.inhatc.auction.dto.AuctionRequestDTO;
 import com.inhatc.auction.dto.AuctionResponseDTO;
 import com.inhatc.auction.dto.BidResponseDTO;
 import com.inhatc.auction.dto.ImageResponseDTO;
+import com.inhatc.auction.dto.SseTransactionResponseDTO;
+import com.inhatc.auction.dto.TransactionResponseDTO;
 import com.inhatc.auction.repository.AuctionRepository;
 import com.inhatc.auction.repository.BidRepository;
 import com.inhatc.auction.repository.CategoryRepository;
@@ -61,10 +64,18 @@ public class AuctionService {
         .orElseThrow(() -> new RuntimeException("경매를 찾을 수 없습니다"));
     Long bidCount = this.bidRepository.findBidCountByAuctionId(auctionId).orElse(0L);
     Long watchCount = 0L;
-    Long auctionLeftTime = this.auctionRepository.calculateAuctionLeftTime(auctionId) <= 0 ? 0L
-        : this.auctionRepository.calculateAuctionLeftTime(auctionId);
-    Long currentHighestBidUserId = this.bidRepository.findCurrentHighestBidUserId(auctionId).orElse(0L);
-    String highestBidderNickname = this.userRepository.findNicknameById(currentHighestBidUserId);
+    Long auctionLeftTime = Math.max(0, Duration.between(LocalDateTime.now(), auction.getAuctionEndTime()).toSeconds());
+
+    // 경매 낙찰 내역 조회
+    Transaction transaction = this.transactionRepository.findByAuctionId(auctionId).orElse(null);
+    TransactionResponseDTO transactionResponseDTO = null;
+    if (transaction != null) {
+      transactionResponseDTO = TransactionResponseDTO.builder()
+          .userId(transaction.getBuyer().getId())
+          .nickname(transaction.getBuyer().getNickname())
+          .status(transaction.getStatus())
+          .build();
+    }
 
     List<ImageResponseDTO> imageList = auction.getImages().stream()
         .map(image -> ImageResponseDTO.builder()
@@ -98,8 +109,9 @@ public class AuctionService {
         .auctionStartTime(auction.getAuctionStartTime())
         .auctionEndTime(auction.getAuctionEndTime())
         .auctionLeftTime(auctionLeftTime)
+        .successfulPrice(auction.getSuccessfulPrice())
         .status(auction.getStatus())
-        .highestBidderNickname(highestBidderNickname)
+        .transaction(transactionResponseDTO)
         .images(imageList)
         .bids(bidList)
         .createdAt(auction.getCreatedAt())
@@ -115,8 +127,7 @@ public class AuctionService {
     return auctions.stream()
         .map(auction -> {
           Long auctionLeftTime = Math.max(0,
-              (auction.getAuctionEndTime().toEpochSecond(ZoneOffset.ofHours(9))
-                  - LocalDateTime.now().toEpochSecond(ZoneOffset.ofHours(9))));
+              Duration.between(LocalDateTime.now(), auction.getAuctionEndTime()).toSeconds());
 
           return AuctionResponseDTO.builder()
               .id(auction.getId())
@@ -288,6 +299,7 @@ public class AuctionService {
     auction.setSuccessfulPrice(auction.getBuyNowPrice());
     auction.setStatus(AuctionStatus.ENDED);
 
+    // 최종 거래 내역 저장
     Transaction transaction = Transaction.builder()
         .auction(auction)
         .seller(auction.getUser())
@@ -296,13 +308,17 @@ public class AuctionService {
         .status(TransactionStatus.COMPLETED)
         .createdAt(LocalDateTime.now())
         .build();
-
     this.transactionRepository.save(transaction);
 
     this.auctionRepository.save(auction);
 
     // 경매 종료 알림
-    sseEmitterService.broadcastAuctionEnded(auctionId);
+    SseTransactionResponseDTO sseBuyNowResponseDTO = SseTransactionResponseDTO.builder()
+        .userId(user.getId())
+        .nickname(user.getNickname())
+        .status(TransactionStatus.COMPLETED)
+        .build();
+    sseEmitterService.broadcastBuyNow(auctionId, sseBuyNowResponseDTO);
   }
 
 }

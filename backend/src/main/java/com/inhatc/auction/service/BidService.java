@@ -15,6 +15,7 @@ import com.inhatc.auction.domain.Bid;
 import com.inhatc.auction.domain.User;
 import com.inhatc.auction.dto.BidRequestDTO;
 import com.inhatc.auction.dto.BidResponseDTO;
+import com.inhatc.auction.dto.SseBidResponseDTO;
 import com.inhatc.auction.repository.AuctionRepository;
 import com.inhatc.auction.repository.BidRepository;
 import com.inhatc.auction.repository.UserRepository;
@@ -113,13 +114,14 @@ public class BidService {
     this.bidRepository.save(bid);
 
     // 현재 경매 가격 업데이트
-    this.auctionRepository.updateCurrentPrice(auctionId, bidAmount);
+    auction.setCurrentPrice(bidAmount);
+    this.auctionRepository.save(auction);
 
-    // 경매 남은 시간을 전송
+    // 경매 남은 시간
     Long auctionLeftTime = Math.max(0, Duration.between(LocalDateTime.now(), auction.getAuctionEndTime()).toSeconds());
 
     // 입찰 응답 DTO 생성
-    BidResponseDTO bidResponse = BidResponseDTO.builder()
+    SseBidResponseDTO sseBidResponseDTO = SseBidResponseDTO.builder()
         .id(bid.getId())
         .userId(bid.getUser().getId())
         .nickname(bid.getUser().getNickname())
@@ -129,7 +131,7 @@ public class BidService {
         .build();
 
     // 현재 경매에 조회중인 모든 사용자에게 입찰 데이터 전송
-    sseEmitterService.broadcastBid(auctionId, bidResponse);
+    sseEmitterService.broadcastBid(auctionId, sseBidResponseDTO);
   }
 
 }

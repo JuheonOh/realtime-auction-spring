@@ -21,6 +21,7 @@ public class AuctionDetailResponseDTO {
     private Long startPrice;
     private Long currentPrice;
     private Long buyNowPrice;
+    private Long successfulPrice;
     private Long bidCount;
     private Long watchCount;
 
@@ -31,10 +32,10 @@ public class AuctionDetailResponseDTO {
     private LocalDateTime auctionEndTime;
 
     private Long auctionLeftTime;
-    private String highestBidderNickname;
     private AuctionStatus status;
     private List<ImageResponseDTO> images;
     private List<BidResponseDTO> bids;
+    private TransactionResponseDTO transaction;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

@@ -11,6 +11,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import com.inhatc.auction.dto.SseBidResponseDTO;
+import com.inhatc.auction.dto.SseTransactionResponseDTO;
 import com.inhatc.auction.repository.AuctionRepository;
 
 import jakarta.annotation.PreDestroy;
@@ -22,6 +24,7 @@ import lombok.extern.log4j.Log4j2;
 @RequiredArgsConstructor
 public class SseEmitterService {
     // auctionId를 키로 하는 SseEmitter 목록 저장소
+    // ConcurrentHashMap : 동시성을 지원하는 맵
     private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
     private final Long DEFAULT_TIMEOUT = 1000L * 60 * 60;
     private final AuctionRepository auctionRepository;
@@ -43,9 +46,6 @@ public class SseEmitterService {
 
             auctionEmitters.add(emitter);
 
-            log.info("auctionEmitters size : " + auctionEmitters.size());
-            log.info("emitters size : " + emitters.size());
-
             // 연결 종료 시 정리
             emitter.onCompletion(() -> {
                 removeEmitterQuietly(auctionId, emitter);
@@ -63,15 +63,15 @@ public class SseEmitterService {
             });
 
         } catch (IOException e) {
-            log.debug("Initial connection event failed", e);
+            log.debug("초기 연결 이벤트 실패", e);
             removeEmitterQuietly(auctionId, emitter);
         }
 
         return emitter;
     }
 
-    // 특정 경매의 모든 구독자에게 입찰 데이터 전송
-    public void broadcastBid(Long auctionId, Object data) {
+    // (SSE -> bid 이벤트) 특정 경매의 모든 구독자에게 입찰 데이터 전송
+    public void broadcastBid(Long auctionId, SseBidResponseDTO sseBidResponseDTO) {
         List<SseEmitter> auctionEmitters = emitters.get(auctionId);
         if (auctionEmitters != null) {
             List<SseEmitter> deadEmitters = new ArrayList<>();
@@ -80,13 +80,13 @@ public class SseEmitterService {
                 try {
                     emitter.send(SseEmitter.event()
                             .name("bid")
-                            .data(data));
+                            .data(sseBidResponseDTO));
                 } catch (Exception e) {
                     deadEmitters.add(emitter);
                     try {
                         emitter.complete();
                     } catch (Exception ex) {
-                        log.debug("Error completing emitter", ex);
+                        log.debug("SSE 연결 종료 중 오류 발생", ex);
                     }
                 }
             });
@@ -96,20 +96,22 @@ public class SseEmitterService {
         }
     }
 
-    public void broadcastAuctionEnded(Long auctionId) {
+    // (SSE -> buyNow 이벤트) 특정 경매의 모든 구독자에게 경매 종료 알림 전송
+    public void broadcastBuyNow(Long auctionId, SseTransactionResponseDTO sseTransactionResponseDTO) {
         List<SseEmitter> auctionEmitters = emitters.get(auctionId);
         if (auctionEmitters != null) {
             List<SseEmitter> deadEmitters = new ArrayList<>();
 
             auctionEmitters.forEach(emitter -> {
                 try {
-                    emitter.send(SseEmitter.event().name("ended").data(auctionId + "번 경매가 종료되었습니다."));
+                    emitter.send(SseEmitter.event().name("buy-now").data(sseTransactionResponseDTO));
+                    emitter.complete();
                 } catch (IOException e) {
                     deadEmitters.add(emitter);
                     try {
                         emitter.complete();
                     } catch (Exception ex) {
-                        log.debug("Error completing emitter", ex);
+                        log.debug("SSE 연결 종료 중 오류 발생", ex);
                     }
                 }
             });
@@ -131,7 +133,10 @@ public class SseEmitterService {
 
         emitters.forEach((auctionId, auctionEmitters) -> {
             // 경매 남은 시간을 전송
-            Long auctionLeftTime = auctionRepository.calculateAuctionLeftTime(auctionId);
+            Long auctionLeftTime = auctionRepository.calculateAuctionLeftTime(auctionId) > 0
+                    ? auctionRepository.calculateAuctionLeftTime(auctionId)
+                    : 0;
+
             List<SseEmitter> deadEmitters = new ArrayList<>();
 
             auctionEmitters.forEach(emitter -> {
@@ -172,7 +177,7 @@ public class SseEmitterService {
                 }
             }
         } catch (Exception e) {
-            log.debug("Error removing emitter", e);
+            log.debug("SSE 연결 제거 중 오류 발생", e);
         }
     }
 
@@ -184,7 +189,7 @@ public class SseEmitterService {
                 try {
                     emitter.complete();
                 } catch (Exception e) {
-                    log.error("Error while shutting down emitter", e);
+                    log.error("SSE 연결 종료 중 오류 발생", e);
                 }
             });
         });

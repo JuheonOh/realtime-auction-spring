@@ -9,7 +9,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class BidResponseDTO {
+public class SseBidResponseDTO {
     private Long id;
     private Long userId;
     private String nickname;
@@ -17,4 +17,6 @@ public class BidResponseDTO {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime bidTime;
+
+    private Long auctionLeftTime;
 }
