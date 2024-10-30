@@ -108,6 +108,36 @@ public class AuctionService {
   }
 
   @Transactional
+  public List<AuctionResponseDTO> getFeaturedAuctionList() {
+    // 경매 입찰 수 내림차순으로 조회
+    List<Auction> auctions = this.auctionRepository.findAllByOrderByBidCountDesc();
+
+    return auctions.stream()
+        .map(auction -> {
+          Long auctionLeftTime = Math.max(0,
+              (auction.getAuctionEndTime().toEpochSecond(ZoneOffset.ofHours(9))
+                  - LocalDateTime.now().toEpochSecond(ZoneOffset.ofHours(9))));
+
+          return AuctionResponseDTO.builder()
+              .id(auction.getId())
+              .userId(auction.getUser().getId())
+              .nickname(auction.getUser().getNickname())
+              .categoryName(auction.getCategory().getName())
+              .title(auction.getTitle())
+              .image(auction.getImages().get(0).getFilePath())
+              .currentPrice(auction.getCurrentPrice())
+              .buyNowPrice(auction.getBuyNowPrice())
+              .auctionStartTime(auction.getAuctionStartTime())
+              .auctionEndTime(auction.getAuctionEndTime())
+              .auctionLeftTime(auctionLeftTime)
+              .createdAt(auction.getCreatedAt())
+              .updatedAt(auction.getUpdatedAt())
+              .build();
+        })
+        .collect(Collectors.toList());
+  }
+
+  @Transactional
   public List<AuctionResponseDTO> getAuctionList() {
     // 현재시간보다 경매 종료 시간 + 10분 이후인 경매 조회
     List<Auction> auctions = auctionRepository.findAllByAuctionEndTimeAfter(10);

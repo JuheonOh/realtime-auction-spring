@@ -32,6 +32,12 @@ public class AuctionController {
         return ResponseEntity.status(HttpStatus.OK).body(auctionService.getAuctionList());
     }
 
+    // 주목할 만한 경매 조회
+    @GetMapping("/featured")
+    public ResponseEntity<?> getFeaturedAuctions() {
+        return ResponseEntity.status(HttpStatus.OK).body(auctionService.getFeaturedAuctionList());
+    }
+
     // 경매 상세 조회
     @GetMapping("/{auctionId}")
     public ResponseEntity<?> getAuctionDetail(@PathVariable("auctionId") Long auctionId) {

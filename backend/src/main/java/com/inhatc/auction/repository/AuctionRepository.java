@@ -37,4 +37,8 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     // 경매 종료 시간 조회
     @Query("SELECT a.auctionEndTime FROM Auction a WHERE a.id = :auctionId")
     LocalDateTime findAuctionEndTimeById(@Param("auctionId") Long auctionId);
+
+    // 경매 입찰 수 내림차순 조회
+    @Query("SELECT a FROM Auction a WHERE a.auctionEndTime > NOW() ORDER BY (SELECT COUNT(b) FROM Bid b WHERE b.auction.id = a.id) DESC LIMIT 4")
+    List<Auction> findAllByOrderByBidCountDesc();
 }

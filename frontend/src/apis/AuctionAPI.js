@@ -78,6 +78,16 @@ export const getAuctionList = async () => {
   }
 };
 
+// 주목할 만한 경매 조회
+export const getFeaturedAuctions = async () => {
+  try {
+    const response = await axios.get(`${BASE_URL}/api/auctions/featured`);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // 경매 상세 조회
 export const getAuctionDetail = async (auctionId) => {
   try {
