@@ -1,6 +1,6 @@
+import { clearCookie, getCookie, setCookie } from "@data/storage/Cookie";
+import { API_SERVER_URL } from "@utils/constant";
 import axios from "axios";
-import { clearCookie, getCookie, setCookie } from "../data/storage/Cookie";
-import { API_SERVER_URL } from "../utils/constant";
 
 const TOKEN_TYPE = "Bearer";
 

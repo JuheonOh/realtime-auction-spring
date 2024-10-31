@@ -1,7 +1,7 @@
 import { Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-export default function FavoriteButton() {
+export default function FavoriteWidget() {
   const navigate = useNavigate();
 
   const handleFavoriteClick = () => {

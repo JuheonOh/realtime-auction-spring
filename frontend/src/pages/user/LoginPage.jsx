@@ -1,11 +1,11 @@
+import { login } from "@apis/AuthAPI";
+import InValidAlert from "@components/common/alerts/InValidAlert";
+import { SET_ACCESS_TOKEN } from "@data/redux/store/User";
+import { setCookie } from "@data/storage/Cookie";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
-import { login } from "../../apis/AuthAPI";
-import InValidAlert from "../../components/InValidAlert";
-import { SET_ACCESS_TOKEN } from "../../data/redux/store/User";
-import { setCookie } from "../../data/storage/Cookie";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);

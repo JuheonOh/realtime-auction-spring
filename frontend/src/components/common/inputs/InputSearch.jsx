@@ -1,7 +1,6 @@
 import { Search } from "lucide-react";
-import React from "react";
 
-export default function SearchInput({ searchTerm, setSearchTerm }) {
+export default function InputSearch({ searchTerm, setSearchTerm }) {
   return (
     <div className="relative hidden md:block">
       <label htmlFor="search" className="sr-only">

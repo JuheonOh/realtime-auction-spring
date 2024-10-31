@@ -1,12 +1,12 @@
+import { getAuctionList } from "@apis/AuctionAPI";
+import { getCategoryList } from "@apis/CommonAPI";
+import LoadingSpinner from "@components/common/loading/LoadingSpinner";
+import AuctionCard from "@components/features/auction/AuctionCard";
+import { SET_AUCTION_LIST, SET_CATEGORY_LIST } from "@data/redux/store/Auction";
+import useInterval from "@hooks/useInterval";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getAuctionList } from "../../apis/AuctionAPI";
-import { getCategoryList } from "../../apis/CommonAPI";
-import AuctionCard from "../../components/AuctionCard";
-import LoadingSpinner from "../../components/LoadingSpinner";
-import { SET_AUCTION_LIST, SET_CATEGORY_LIST } from "../../data/redux/store/Auction";
-import useInterval from "../../hooks/useInterval";
 
 export default function AuctionListPage() {
   const [searchTerm, setSearchTerm] = useState("");

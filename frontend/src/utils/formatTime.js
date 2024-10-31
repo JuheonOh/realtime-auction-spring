@@ -1,4 +1,4 @@
-const formatTime = (time, slice = 4) => {
+export default function formatTime(time, slice = 4) {
   if (time === 0) return "종료";
 
   const days = Math.floor(time / (24 * 60 * 60)); // 24시간
@@ -14,6 +14,4 @@ const formatTime = (time, slice = 4) => {
   if (seconds > 0) timeParts.push(`${seconds}초`);
 
   return timeParts.slice(0, slice).join(" ");
-};
-
-export default formatTime;
+}

@@ -1,8 +1,9 @@
+import { IMAGE_URL } from "@utils/constant";
+import { addCommas } from "@utils/formatNumber";
+import formatTime from "@utils/formatTime";
 import { Clock, User } from "lucide-react";
 import { Link } from "react-router-dom";
-import { addCommas } from "../utils/formatNumber";
-import formatTime from "../utils/formatTime";
-import { IMAGE_URL } from "../utils/constant";
+
 export default function AuctionCard({ auction }) {
   return (
     <div className="flex flex-col justify-between h-full bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 transform hover:shadow-lg hover:-translate-y-1 hover:scale-105">

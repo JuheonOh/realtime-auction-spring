@@ -1,5 +1,5 @@
+import { ChevronDown, ChevronUp, Mail, MapPin, Phone } from "lucide-react";
 import { useState } from "react";
-import { Mail, Phone, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 
 const faqs = [
   {

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { API_SERVER_URL } from "../utils/constant";
+import { API_SERVER_URL } from "@utils/constant";
 
 export const CommonApi = axios.create({
   baseURL: API_SERVER_URL,

@@ -1,8 +1,8 @@
+import { signUp } from "@apis/AuthAPI";
+import InValidAlert from "@components/common/alerts/InValidAlert";
 import { Eye, EyeOff, Lock, Mail, Phone, User } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { signUp } from "../../apis/AuthAPI";
-import InValidAlert from "../../components/InValidAlert";
 
 export default function SignUpPage() {
   const navigate = useNavigate();

@@ -1,6 +1,6 @@
+import auctionReducer from "@data/redux/store/Auction";
+import userReducer from "@data/redux/store/User";
 import { configureStore } from "@reduxjs/toolkit";
-import userReducer from "./User";
-import auctionReducer from "./Auction";
 
 const initialState = {};
 export default configureStore({

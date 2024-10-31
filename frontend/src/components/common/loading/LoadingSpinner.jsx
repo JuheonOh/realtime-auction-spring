@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function LoadingSpinner({ isLoading, isError, message }) {
   return isLoading || isError ? (
     <div className="relative h-48">

@@ -1,20 +1,20 @@
+import { buyNowAuction, createBid, getAuctionBidStream, getAuctionDetail } from "@apis/AuctionAPI";
+import { getUser } from "@apis/UserAPI";
+import InValidAlert from "@components/common/alerts/InValidAlert";
+import SuccessAlert from "@components/common/alerts/SuccessAlert";
+import BlurOverlay from "@components/common/loading/BlurOverlay";
+import LoadingSpinner from "@components/common/loading/LoadingSpinner";
+import BidChart from "@components/features/auction/BidChart";
+import { SET_INFO } from "@data/redux/store/User";
+import { clearCookie } from "@data/storage/Cookie";
+import useInterval from "@hooks/useInterval";
+import { IMAGE_URL } from "@utils/constant";
+import { addCommas, formatNumberInput } from "@utils/formatNumber";
+import formatTime from "@utils/formatTime";
 import { Clock, Eye, Gavel, Heart, MessageSquareMore, Share2, Star, Tag, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
-import { buyNowAuction, createBid, getAuctionBidStream, getAuctionDetail } from "../../apis/AuctionAPI";
-import { getUser } from "../../apis/UserAPI";
-import BlurOverlay from "../../components/BlurOverlay";
-import BidChart from "../../components/charts/BidChart";
-import InValidAlert from "../../components/InValidAlert";
-import LoadingSpinner from "../../components/LoadingSpinner";
-import SuccessAlert from "../../components/SuccessAlert";
-import { SET_INFO } from "../../data/redux/store/User";
-import { clearCookie } from "../../data/storage/Cookie";
-import useInterval from "../../hooks/useInterval";
-import { IMAGE_URL } from "../../utils/constant";
-import { addCommas, formatNumberInput } from "../../utils/formatNumber";
-import formatTime from "../../utils/formatTime";
 
 // TODO:
 // 1. 입찰 버튼 클릭 시 입찰 요청 후 입찰 성공 시 입찰 가격을 업데이트할 지 아니면 입찰 성공 후 sse 로 입찰 데이터를 받아와서 업데이트할 지

@@ -1,23 +1,18 @@
-import React from "react";
+import Layout from "@layouts/Layout";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
-import Layout from "../layouts/Layout";
-
-import ContactPage from "../pages/common/ContactPage";
-import HomePage from "../pages/common/HomePage";
-import NotFoundPage from "../pages/common/NotFoundPage";
-
-import AuctionCreatePage from "../pages/auctions/AuctionCreatePage";
-import AuctionDetailPage from "../pages/auctions/AuctionDetailPage";
-import AuctionListPage from "../pages/auctions/AuctionListPage";
-
-import SupportPage from "../pages/common/SupportPage";
-import LoginPage from "../pages/user/LoginPage";
-import ProfilePage from "../pages/user/ProfilePage";
-import SignUpPage from "../pages/user/SignUpPage";
-import Private from "./Private";
-
-import ScrollToTop from "../components/ScrollToTop";
+import ScrollToTop from "@components/common/navigation/ScrollToTop";
+import Private from "@config/Private";
+import AuctionCreatePage from "@pages/auctions/AuctionCreatePage";
+import AuctionDetailPage from "@pages/auctions/AuctionDetailPage";
+import AuctionListPage from "@pages/auctions/AuctionListPage";
+import ContactPage from "@pages/common/ContactPage";
+import HomePage from "@pages/common/HomePage";
+import NotFoundPage from "@pages/common/NotFoundPage";
+import SupportPage from "@pages/common/SupportPage";
+import LoginPage from "@pages/user/LoginPage";
+import ProfilePage from "@pages/user/ProfilePage";
+import SignUpPage from "@pages/user/SignUpPage";
 
 export default function Router() {
   return (

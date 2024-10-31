@@ -1,11 +1,11 @@
+import { getUser } from "@apis/UserAPI";
+import LoadingSpinner from "@components/common/loading/LoadingSpinner";
+import { SET_INFO } from "@data/redux/store/User";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, Outlet } from "react-router-dom";
-import { getUser } from "../apis/UserAPI";
-import LoadingSpinner from "../components/LoadingSpinner";
-import { SET_INFO } from "../data/redux/store/User";
 
-const Private = () => {
+export default function Private() {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user);
   const [loading, setLoading] = useState(true);
@@ -36,6 +36,4 @@ const Private = () => {
   }
 
   return <Outlet />;
-};
-
-export default Private;
+}

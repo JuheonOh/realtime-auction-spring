@@ -1,13 +1,13 @@
-import React, { useState } from "react";
+import MenuToggleButton from "@components/common/buttons/MenuToggleButton";
+import UserProfileButton from "@components/common/buttons/UserProfileButton";
+import InputSearch from "@components/common/inputs/InputSearch";
+import MobileMenu from "@components/common/navigation/MobileMenu";
+import NavLink from "@components/common/navigation/NavLink";
+import FavoriteWidget from "@components/common/widgets/FavoriteWidget";
+import NotificationComponent from "@components/features/notification/NotificationDropdown";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
-import MobileMenu from "../components/MobileMenu";
-import NavLink from "../components/NavLink";
-import SearchInput from "../components/SearchInput";
-import UserProfileButton from "../components/UserProfileButton";
-import FavoriteButton from "../components/widgets/FavoriteButton";
-import MenuToggleButton from "../components/widgets/MenuToggleButton";
-import NotificationComponent from "../components/widgets/NotificationDropdown";
 
 export default function Header() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,9 +35,9 @@ export default function Header() {
             ))}
           </div>
           <div className="flex items-center space-x-4">
-            <SearchInput searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+            <InputSearch searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
             <NotificationComponent />
-            <FavoriteButton />
+            <FavoriteWidget />
             <UserProfileButton isAuthenticated={isAuthenticated} />
             <MenuToggleButton isMenuOpen={isMenuOpen} setIsMenuOpen={setIsMenuOpen} />
           </div>

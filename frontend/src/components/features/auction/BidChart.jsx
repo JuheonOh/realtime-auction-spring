@@ -1,3 +1,4 @@
+import { addCommas } from "@utils/formatNumber";
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -10,7 +11,6 @@ import {
   Tooltip,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
-import { addCommas } from "../../utils/formatNumber";
 
 // Chart.js 등록 (Filler 추가)
 ChartJS.register(

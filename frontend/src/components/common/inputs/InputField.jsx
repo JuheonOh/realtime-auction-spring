@@ -1,4 +1,4 @@
-import InValidAlert from "./InValidAlert";
+import InValidAlert from "@components/common/alerts/InValidAlert";
 
 export default function InputField({ name, label, type = "text", value, placeholder, handleChange, inValid }) {
   return (

@@ -1,5 +1,5 @@
+import { clearCookie, getCookie } from "@data/storage/Cookie";
 import { createSlice } from "@reduxjs/toolkit";
-import { clearCookie, getCookie } from "../../storage/Cookie";
 
 const initialState = {
   authenticated: getCookie("accessToken") ? true : false,

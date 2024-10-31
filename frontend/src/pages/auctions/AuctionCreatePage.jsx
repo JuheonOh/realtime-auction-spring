@@ -1,13 +1,13 @@
+import { createAuction } from "@apis/AuctionAPI";
+import { getCategoryList } from "@apis/CommonAPI";
+import InValidAlert from "@components/common/alerts/InValidAlert";
+import InputField from "@components/common/inputs/InputField";
+import { formatPrice, removeCommas } from "@utils/formatNumber";
 import { Upload, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { createAuction } from "../../apis/AuctionAPI";
-import { getCategoryList } from "../../apis/CommonAPI";
-import InputField from "../../components/InputField";
-import InValidAlert from "../../components/InValidAlert";
-import { formatPrice, removeCommas } from "../../utils/formatNumber";
 
 export default function AuctionCreatePage() {
   const navigate = useNavigate();

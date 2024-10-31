@@ -1,10 +1,10 @@
+import { getFeaturedAuctions } from "@apis/AuctionAPI";
+import { getCategoryList } from "@apis/CommonAPI";
+import LoadingSpinner from "@components/common/loading/LoadingSpinner";
+import AuctionCard from "@components/features/auction/AuctionCard";
+import { SET_CATEGORY_LIST, SET_FEATURED_AUCTION_LIST } from "@data/redux/store/Auction";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { getFeaturedAuctions } from "../../apis/AuctionAPI";
-import { getCategoryList } from "../../apis/CommonAPI";
-import AuctionCard from "../../components/AuctionCard";
-import LoadingSpinner from "../../components/LoadingSpinner";
-import { SET_CATEGORY_LIST, SET_FEATURED_AUCTION_LIST } from "../../data/redux/store/Auction";
 
 export default function HomePage() {
   const dispatch = useDispatch();

@@ -1,7 +1,7 @@
-import { Link } from "react-router-dom";
 import { Home } from "lucide-react";
+import { Link } from "react-router-dom";
 
-export default function PageNotFound() {
+export default function NotFoundPage() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8 text-center">
