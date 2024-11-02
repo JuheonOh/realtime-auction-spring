@@ -9,6 +9,7 @@ import com.inhatc.auction.domain.category.entity.Category;
 import com.inhatc.auction.domain.image.entity.Image;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.global.constant.AuctionStatus;
+import com.inhatc.auction.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -22,25 +23,25 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
+@Table(name = "auction")
 @Getter
-@Setter
 @NoArgsConstructor
-public class Auction {
+public class Auction extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
 
@@ -60,9 +61,6 @@ public class Auction {
     @Enumerated(EnumType.STRING)
     private AuctionStatus status;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
     @OneToMany(mappedBy = "auction", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     private List<Image> images = new ArrayList<>();
 
@@ -71,8 +69,7 @@ public class Auction {
 
     @Builder
     public Auction(User user, Category category, String title, String description, Long startPrice, Long buyNowPrice,
-            LocalDateTime auctionStartTime, LocalDateTime auctionEndTime, AuctionStatus status, LocalDateTime createdAt,
-            LocalDateTime updatedAt, List<Image> images) {
+            LocalDateTime auctionStartTime, LocalDateTime auctionEndTime, AuctionStatus status, List<Image> images) {
         this.user = user;
         this.category = category;
         this.title = title;
@@ -84,7 +81,26 @@ public class Auction {
         this.auctionEndTime = auctionEndTime;
         this.status = status;
         this.images = images;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
     }
+
+    public void setImages(List<Image> images) {
+        this.images = images;
+    }
+
+    public void updateAuctionEndTime(LocalDateTime auctionEndTime) {
+        this.auctionEndTime = auctionEndTime;
+    }
+
+    public void setSuccessfulPrice(Long successfulPrice) {
+        this.successfulPrice = successfulPrice;
+    }
+
+    public void updateCurrentPrice(Long currentPrice) {
+        this.currentPrice = currentPrice;
+    }
+
+    public void updateStatus(AuctionStatus status) {
+        this.status = status;
+    }
+
 }

@@ -1,6 +1,5 @@
 package com.inhatc.auction.domain.auth.service;
 
-import java.time.LocalDateTime;
 import java.util.HashMap;
 
 import org.springframework.http.HttpStatus;
@@ -15,12 +14,12 @@ import com.inhatc.auction.domain.auth.dto.response.AuthResponseDTO;
 import com.inhatc.auction.domain.auth.entity.Auth;
 import com.inhatc.auction.domain.auth.repository.AuthRepository;
 import com.inhatc.auction.domain.user.dto.request.UserRequestDTO;
+import com.inhatc.auction.domain.user.entity.CustomUserDetails;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
 import com.inhatc.auction.global.constant.Role;
 import com.inhatc.auction.global.constant.SecurityConstants;
 import com.inhatc.auction.global.exception.CustomResponseStatusException;
-import com.inhatc.auction.global.security.jwt.CustomUserDetails;
 import com.inhatc.auction.global.security.jwt.JwtTokenProvider;
 
 import io.jsonwebtoken.ExpiredJwtException;
@@ -74,8 +73,6 @@ public class AuthService {
                 .tokenType(SecurityConstants.TOKEN_TYPE.strip())
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .build();
 
         this.authRepository.save(auth);

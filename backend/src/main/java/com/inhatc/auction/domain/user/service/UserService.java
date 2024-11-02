@@ -1,9 +1,10 @@
 package com.inhatc.auction.domain.user.service;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import com.inhatc.auction.domain.user.dto.request.UserRequestDTO;
+import org.springframework.stereotype.Service;
+
 import com.inhatc.auction.domain.user.dto.response.UserResponseDTO;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
@@ -22,19 +23,11 @@ public class UserService {
         return new UserResponseDTO(user);
     }
 
-    @Transactional
-    public void update(Long id, UserRequestDTO requestDTO) {
-        User user = this.userRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다. user_id = " + id));
+    public List<UserResponseDTO> findAll() {
+        List<User> users = this.userRepository.findAll();
 
-        this.userRepository.save(user);
+        return users.stream()
+                .map(UserResponseDTO::new)
+                .collect(Collectors.toList());
     }
-
-    @Transactional
-    public void delete(Long id) {
-        User user = this.userRepository.findById(id).orElseThrow(
-                () -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다. user_id = " + id));
-        this.userRepository.delete(user);
-    }
-
 }

@@ -9,6 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import com.inhatc.auction.domain.user.entity.CustomUserDetails;
 import com.inhatc.auction.global.constant.SecurityConstants;
 
 import io.jsonwebtoken.Claims;

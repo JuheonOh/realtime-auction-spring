@@ -1,4 +1,4 @@
-package com.inhatc.auction.global.security.jwt;
+package com.inhatc.auction.domain.user.entity;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -6,8 +6,6 @@ import java.util.Collections;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
-import com.inhatc.auction.domain.user.entity.User;
 
 public class CustomUserDetails implements UserDetails {
     private final User user;

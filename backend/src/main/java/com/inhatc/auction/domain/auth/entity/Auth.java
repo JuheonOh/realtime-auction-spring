@@ -1,7 +1,5 @@
 package com.inhatc.auction.domain.auth.entity;
 
-import java.time.LocalDateTime;
-
 import com.inhatc.auction.domain.user.entity.User;
 
 import jakarta.persistence.CascadeType;
@@ -13,15 +11,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@NoArgsConstructor
-@Getter
-@Builder
 @Entity
+@Table(name = "auth")
+@Getter
+@NoArgsConstructor
 @AllArgsConstructor
 public class Auth {
     @Id
@@ -36,20 +35,23 @@ public class Auth {
     @Column(columnDefinition = "TEXT")
     private String refreshToken;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
     @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Builder
+    public Auth(String tokenType, String accessToken, String refreshToken, User user) {
+        this.tokenType = tokenType;
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
+        this.user = user;
+    }
+
     public void updateAccessToken(String accessToken) {
         this.accessToken = accessToken;
-        this.updatedAt = LocalDateTime.now();
     }
 
     public void updateRefreshToken(String refreshToken) {
         this.refreshToken = refreshToken;
-        this.updatedAt = LocalDateTime.now();
     }
 }

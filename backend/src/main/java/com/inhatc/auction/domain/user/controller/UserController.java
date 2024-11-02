@@ -1,16 +1,14 @@
 package com.inhatc.auction.domain.user.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.inhatc.auction.domain.user.dto.request.UserRequestDTO;
 import com.inhatc.auction.domain.user.dto.response.UserResponseDTO;
 import com.inhatc.auction.domain.user.service.UserService;
 import com.inhatc.auction.global.constant.SecurityConstants;
@@ -33,35 +31,15 @@ public class UserController {
         String accessToken = header.substring(SecurityConstants.TOKEN_PREFIX.length());
 
         Long id = this.jwtTokenProvider.getUserIdFromToken(accessToken);
-        UserResponseDTO UserResponseDTO = this.userService.findById(id);
+        UserResponseDTO userResponseDTO = this.userService.findById(id);
 
-        return ResponseEntity.status(HttpStatus.OK).body(UserResponseDTO);
+        return ResponseEntity.status(HttpStatus.OK).body(userResponseDTO);
     }
 
-    /**
-     * 회원정보 수정 API
-     */
-    @PutMapping
-    public ResponseEntity<?> updateUser(@RequestHeader("Authorization") String header,
-            @RequestBody UserRequestDTO requestDTO) {
-        String accessToken = header.substring(SecurityConstants.TOKEN_PREFIX.length());
+    @GetMapping("/all")
+    public ResponseEntity<?> findAllUser() {
+        List<UserResponseDTO> userResponseDTOs = this.userService.findAll();
 
-        Long id = this.jwtTokenProvider.getUserIdFromToken(accessToken);
-        this.userService.update(id, requestDTO);
-
-        return ResponseEntity.status(HttpStatus.OK).body(null);
-    }
-
-    /**
-     * 회원정보 삭제 API
-     */
-    @DeleteMapping
-    public ResponseEntity<?> deleteUser(@RequestHeader("Authorization") String header) {
-        String accessToken = header.substring(SecurityConstants.TOKEN_PREFIX.length());
-
-        Long id = this.jwtTokenProvider.getUserIdFromToken(accessToken);
-        this.userService.delete(id);
-
-        return ResponseEntity.status(HttpStatus.OK).body(null);
+        return ResponseEntity.status(HttpStatus.OK).body(userResponseDTOs);
     }
 }

@@ -43,7 +43,7 @@ public class BidService {
             .id(bid.getId())
             .nickname(bid.getUser().getNickname())
             .bidAmount(bid.getBidAmount())
-            .bidTime(bid.getBidTime())
+            .bidTime(bid.getCreatedAt())
             .build())
         .collect(Collectors.toList());
   }
@@ -110,12 +110,11 @@ public class BidService {
         .auction(auction)
         .user(user)
         .bidAmount(bidAmount)
-        .bidTime(LocalDateTime.now())
         .build();
     this.bidRepository.save(bid);
 
     // 현재 경매 가격 업데이트
-    auction.setCurrentPrice(bidAmount);
+    auction.updateCurrentPrice(bidAmount);
     this.auctionRepository.save(auction);
 
     // 경매 남은 시간
@@ -127,7 +126,7 @@ public class BidService {
         .userId(bid.getUser().getId())
         .nickname(bid.getUser().getNickname())
         .bidAmount(bid.getBidAmount())
-        .bidTime(bid.getBidTime())
+        .bidTime(bid.getCreatedAt())
         .auctionLeftTime(auctionLeftTime)
         .build();
 

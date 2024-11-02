@@ -92,7 +92,7 @@ public class AuctionService {
                                                 .userId(bid.getUser().getId())
                                                 .nickname(bid.getUser().getNickname())
                                                 .bidAmount(bid.getBidAmount())
-                                                .bidTime(bid.getBidTime())
+                                                .bidTime(bid.getCreatedAt())
                                                 .build())
                                 .collect(Collectors.toList());
 
@@ -300,9 +300,9 @@ public class AuctionService {
                 }
 
                 // 경매 (종료 시간, 최종 낙찰가, 상태) 업데이트
-                auction.setAuctionEndTime(LocalDateTime.now());
+                auction.updateAuctionEndTime(LocalDateTime.now());
                 auction.setSuccessfulPrice(auction.getBuyNowPrice());
-                auction.setStatus(AuctionStatus.ENDED);
+                auction.updateStatus(AuctionStatus.ENDED);
 
                 // 최종 거래 내역 저장
                 Transaction transaction = Transaction.builder()
@@ -311,7 +311,6 @@ public class AuctionService {
                                 .buyer(user)
                                 .finalPrice(auction.getBuyNowPrice())
                                 .status(TransactionStatus.COMPLETED)
-                                .createdAt(LocalDateTime.now())
                                 .build();
                 this.transactionRepository.save(transaction);
 

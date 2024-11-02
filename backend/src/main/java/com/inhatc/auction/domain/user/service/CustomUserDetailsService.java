@@ -1,10 +1,11 @@
-package com.inhatc.auction.global.security.jwt;
+package com.inhatc.auction.domain.user.service;
 
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import com.inhatc.auction.domain.user.entity.CustomUserDetails;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
 
