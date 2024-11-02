@@ -1,3 +1,3 @@
 // 서버 주소
-export const API_SERVER_URL = "http://localhost:8080";
-export const IMAGE_URL = `${API_SERVER_URL}/auction/images`;
+export const API_BASE_URL = "http://localhost:8080";
+export const IMAGE_URL = `${API_BASE_URL}/auction/images`;

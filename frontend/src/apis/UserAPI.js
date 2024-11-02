@@ -1,12 +1,12 @@
-import axios from "axios";
 import { clearCookie, getCookie, setCookie } from "@data/storage/Cookie";
-import { API_SERVER_URL } from "@utils/constant";
+import { API_BASE_URL } from "@utils/constant";
+import axios from "axios";
 
 const TOKEN_TYPE = "Bearer";
 
 // API 인스턴스 생성
 export const UserApi = axios.create({
-  baseURL: API_SERVER_URL,
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -48,7 +48,7 @@ UserApi.interceptors.response.use(
 const refreshAccessToken = async () => {
   try {
     const refreshToken = getCookie("refreshToken");
-    const response = await axios.get(`${API_SERVER_URL}/api/auth/refresh`, {
+    const response = await axios.get(`${API_BASE_URL}/api/auth/refresh`, {
       headers: {
         REFRESH_TOKEN: refreshToken,
       },
