@@ -323,7 +323,8 @@ public class AuctionService {
                                 .nickname(user.getNickname())
                                 .status(TransactionStatus.COMPLETED)
                                 .build();
-                sseEmitterService.broadcastBuyNow(auctionId, sseBuyNowResponseDTO);
+
+                this.sseEmitterService.broadcastBuyNow(auctionId, sseBuyNowResponseDTO);
         }
 
 }

@@ -132,7 +132,7 @@ public class BidService {
         .build();
 
     // 현재 경매에 조회중인 모든 사용자에게 입찰 데이터 전송
-    sseEmitterService.broadcastBid(auctionId, sseBidResponseDTO);
+    this.sseEmitterService.broadcastBid(auctionId, sseBidResponseDTO);
   }
 
 }

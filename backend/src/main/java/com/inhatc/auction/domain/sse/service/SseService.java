@@ -26,7 +26,7 @@ public class SseService {
     // auctionId를 키로 하는 SseEmitter 목록 저장소
     // ConcurrentHashMap : 동시성을 지원하는 맵
     private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
-    private static final Long DEFAULT_TIMEOUT = 1000L * 60 * 10;
+    private static final Long DEFAULT_TIMEOUT = 1000L * 60 * 10; // 10분
     private final AuctionRepository auctionRepository;
 
     // SSE 연결 생성
@@ -54,6 +54,7 @@ public class SseService {
         return emitter;
     }
 
+    // SseEmitter 콜백 등록
     private void registerEmitterCallbacks(Long auctionId, SseEmitter emitter) {
         // 연결 종료 시 정리
         emitter.onCompletion(() -> {
@@ -76,7 +77,8 @@ public class SseService {
         });
     }
 
-    public void broadcastEvent(Long auctionId, String eventName, Object data) {
+    // 특정 경매의 모든 구독자에게 이벤트 전송
+    private void broadcastEvent(Long auctionId, String eventName, Object data) {
         List<SseEmitter> auctionEmitters = emitters.get(auctionId);
         if (auctionEmitters != null) {
             List<SseEmitter> deadEmitters = new ArrayList<>();
@@ -97,16 +99,16 @@ public class SseService {
 
     // (SSE -> bid 이벤트) 특정 경매의 모든 구독자에게 입찰 데이터 전송
     public void broadcastBid(Long auctionId, SseBidResponseDTO sseBidResponseDTO) {
-        broadcastEvent(auctionId, "bid", sseBidResponseDTO);
+        this.broadcastEvent(auctionId, "bid", sseBidResponseDTO);
     }
 
     // (SSE -> buyNow 이벤트) 특정 경매의 모든 구독자에게 경매 종료 알림 전송
     public void broadcastBuyNow(Long auctionId, SseTransactionResponseDTO sseTransactionResponseDTO) {
-        broadcastEvent(auctionId, "buy-now", sseTransactionResponseDTO);
+        this.broadcastEvent(auctionId, "buy-now", sseTransactionResponseDTO);
     }
 
-    // 10초마다 서버 시간 전송
-    @Scheduled(fixedRate = 10000)
+    // 1분마다 서버 시간 기준 경매 남은 시간 전송
+    @Scheduled(fixedRate = 60000)
     public void sendServerTime() {
         List<Long> emptyAuctions = new ArrayList<>();
 
