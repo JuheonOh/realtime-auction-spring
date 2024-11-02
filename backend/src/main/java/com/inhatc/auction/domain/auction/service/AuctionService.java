@@ -29,7 +29,7 @@ import com.inhatc.auction.domain.category.repository.CategoryRepository;
 import com.inhatc.auction.domain.image.dto.response.ImageResponseDTO;
 import com.inhatc.auction.domain.image.entity.Image;
 import com.inhatc.auction.domain.sse.dto.response.SseTransactionResponseDTO;
-import com.inhatc.auction.domain.sse.service.SseEmitterService;
+import com.inhatc.auction.domain.sse.service.SseService;
 import com.inhatc.auction.domain.transaction.dto.response.TransactionResponseDTO;
 import com.inhatc.auction.domain.transaction.entity.Transaction;
 import com.inhatc.auction.domain.transaction.repository.TransactionRepository;
@@ -56,7 +56,7 @@ public class AuctionService {
         private final CategoryRepository categoryRepository;
         private final BidRepository bidRepository;
         private final TransactionRepository transactionRepository;
-        private final SseEmitterService sseEmitterService;
+        private final SseService sseEmitterService;
         private final JwtTokenProvider jwtTokenProvider;
 
         @Transactional

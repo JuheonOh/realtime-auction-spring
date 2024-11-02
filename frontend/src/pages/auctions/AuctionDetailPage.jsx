@@ -16,12 +16,6 @@ import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
 
-// TODO:
-// 1. 입찰 버튼 클릭 시 입찰 요청 후 입찰 성공 시 입찰 가격을 업데이트할 지 아니면 입찰 성공 후 sse 로 입찰 데이터를 받아와서 업데이트할 지
-// 2. 낙관적 업데이트 (Optimistic Update) 가 뭔지 알아보기
-// 3. 입찰 데이터 업데이트 시 중복 입찰 방지 처리
-// 4. 다중 사용자들이 동시에 입찰 시 중복 입찰 방지 처리
-
 // 입찰 단위
 const bidUnit = (currentPrice) => {
   if (currentPrice < 1000) return 100;
@@ -118,10 +112,16 @@ export default function AuctionDetail() {
   useEffect(() => {
     if (!auctionId) return;
 
-    let bidStream;
+    let bidStream = null;
     const userId = user?.info?.id || null;
+
     const fetchBidStream = async () => {
       try {
+        // 기존 연결이 있다면 닫기
+        if (bidStream) {
+          bidStream.close();
+        }
+
         // SSE 연결
         bidStream = await getAuctionBidStream(auctionId);
 
@@ -188,13 +188,24 @@ export default function AuctionDetail() {
           }));
         });
 
-        // 재연결 시도 이벤트
+        // SSE 연결 타임아웃 이벤트
+        bidStream.addEventListener("timeout", (e) => {
+          // console.error(e);
+          console.log(e);
+        });
+
+        // SSE 연결 에러 이벤트
         bidStream.addEventListener("error", (e) => {
-          console.error(e.data);
-          fetchBidStream();
+          // console.error(e);
         });
       } catch (err) {
         console.error(err);
+
+        // 입찰 스트림 재연결
+        setTimeout(() => {
+          console.log("입찰 스트림 재연결");
+          fetchBidStream();
+        }, 1000);
       }
     };
 
@@ -204,6 +215,7 @@ export default function AuctionDetail() {
     return () => {
       if (bidStream) {
         bidStream.close();
+        bidStream = null;
       }
     };
   }, [auctionId, user.info.id]);

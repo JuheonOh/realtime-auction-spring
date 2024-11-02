@@ -16,7 +16,7 @@ import com.inhatc.auction.domain.bid.dto.response.BidResponseDTO;
 import com.inhatc.auction.domain.bid.entity.Bid;
 import com.inhatc.auction.domain.bid.repository.BidRepository;
 import com.inhatc.auction.domain.sse.dto.response.SseBidResponseDTO;
-import com.inhatc.auction.domain.sse.service.SseEmitterService;
+import com.inhatc.auction.domain.sse.service.SseService;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
 import com.inhatc.auction.global.security.jwt.JwtTokenProvider;
@@ -34,7 +34,7 @@ public class BidService {
   private final UserRepository userRepository;
   private final BidRepository bidRepository;
   private final AuctionRepository auctionRepository;
-  private final SseEmitterService sseEmitterService;
+  private final SseService sseEmitterService;
 
   public List<BidResponseDTO> getBidList(Long auctionId) {
     List<Bid> bids = this.bidRepository.findAllByAuctionId(auctionId);
