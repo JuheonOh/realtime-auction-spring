@@ -157,7 +157,7 @@ export default function BidChart({ bidData, startPrice }) {
 
   // 차트 데이터
   const chartConfig = {
-    labels: filteredData.map((data, index) => (index === 0 ? "경매 시작" : data.bidTime)),
+    labels: filteredData.map((data, index) => (index === 0 ? "경매 시작" : data.createdAt)),
     datasets: [
       {
         label: "입찰가",

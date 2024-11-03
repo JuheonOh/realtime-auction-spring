@@ -43,7 +43,7 @@ public class BidService {
             .id(bid.getId())
             .nickname(bid.getUser().getNickname())
             .bidAmount(bid.getBidAmount())
-            .bidTime(bid.getCreatedAt())
+            .createdAt(bid.getCreatedAt())
             .build())
         .collect(Collectors.toList());
   }

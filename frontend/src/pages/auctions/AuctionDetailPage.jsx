@@ -84,7 +84,7 @@ export default function AuctionDetail() {
           setTransaction(auctionDetail.data.transaction);
         }
 
-        const bids = auctionDetail.data.bids.map((data) => ({ ...data, bidTime: new Date(data.bidTime) }));
+        const bids = auctionDetail.data.bids.map((data) => ({ ...data, createdAt: new Date(data.createdAt) }));
         if (bids.length > 0) {
           setBidData(bids);
           setIsHighestBidder(bids[bids.length - 1].userId === user.info.id);
@@ -144,7 +144,7 @@ export default function AuctionDetail() {
           // 본인이 입찰한 경우 업데이트 하지 않음
           // 중복 입찰 방지를 위해 본인이 입찰한 경우 업데이트 하지 않음
           if (bid.userId !== userId) {
-            setBidData((prev) => [...prev, { id: bid.id, userId: bid.userId, nickname: bid.nickname, bidAmount: bid.bidAmount, bidTime: new Date(bid.bidTime) }]);
+            setBidData((prev) => [...prev, { id: bid.id, userId: bid.userId, nickname: bid.nickname, bidAmount: bid.bidAmount, createdAt: new Date(bid.createdAt) }]);
             setAuction((prev) => ({
               ...prev,
               currentPrice: bid.bidAmount,
@@ -310,7 +310,7 @@ export default function AuctionDetail() {
         }));
 
         // 입찰 데이터 업데이트
-        setBidData([...bidData, { id: res.data.id, userId: user.info.id, nickname: user.info.nickname, bidAmount, bidTime: new Date() }]);
+        setBidData([...bidData, { id: res.data.id, userId: user.info.id, nickname: user.info.nickname, bidAmount, createdAt: new Date() }]);
 
         // 입찰 성공 메시지 표시
         setShowBidSuccess(true);
