@@ -126,7 +126,7 @@ public class BidService {
         .userId(bid.getUser().getId())
         .nickname(bid.getUser().getNickname())
         .bidAmount(bid.getBidAmount())
-        .bidTime(bid.getCreatedAt())
+        .createdAt(bid.getCreatedAt())
         .auctionLeftTime(auctionLeftTime)
         .build();
 

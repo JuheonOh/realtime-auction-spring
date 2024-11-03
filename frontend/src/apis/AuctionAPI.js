@@ -135,12 +135,9 @@ export const createAuction = async (formData) => {
 };
 
 // 입찰 생성
-export const createBid = async (auctionId, bidAmount, userId) => {
+export const createBid = async (auctionId, bidAmount) => {
   try {
-    const response = await AuctionApi.post(`/api/auctions/${auctionId}/bids`, {
-      bidAmount,
-      userId,
-    });
+    const response = await AuctionApi.post(`/api/auctions/${auctionId}/bids`, { bidAmount });
     return response;
   } catch (error) {
     throw error;
@@ -148,9 +145,9 @@ export const createBid = async (auctionId, bidAmount, userId) => {
 };
 
 // 즉시 구매
-export const buyNowAuction = async (auctionId, userId) => {
+export const buyNowAuction = async (auctionId) => {
   try {
-    const response = await AuctionApi.post(`/api/auctions/${auctionId}/buy-now`, { userId });
+    const response = await AuctionApi.post(`/api/auctions/${auctionId}/buy-now`);
     return response;
   } catch (error) {
     throw error;

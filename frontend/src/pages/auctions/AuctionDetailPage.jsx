@@ -189,15 +189,10 @@ export default function AuctionDetail() {
         });
 
         // SSE 연결 타임아웃 이벤트
-        bidStream.addEventListener("timeout", (e) => {
-          // console.error(e);
-          console.log(e);
-        });
+        bidStream.addEventListener("timeout", (e) => {});
 
         // SSE 연결 에러 이벤트
-        bidStream.addEventListener("error", (e) => {
-          // console.error(e);
-        });
+        bidStream.addEventListener("error", (e) => {});
       } catch (err) {
         console.error(err);
 
@@ -299,7 +294,7 @@ export default function AuctionDetail() {
 
     try {
       // 입찰 요청
-      const res = await createBid(auctionId, bidAmount, user.info.id);
+      const res = await createBid(auctionId, bidAmount);
 
       // 입찰 성공 시 입찰가 업데이트
       if (res?.status === 201) {
@@ -333,7 +328,7 @@ export default function AuctionDetail() {
     // 즉시 구매 요청
     if (window.confirm("즉시 구매하시겠습니까?")) {
       try {
-        const res = await buyNowAuction(auctionId, user.info.id);
+        const res = await buyNowAuction(auctionId);
         if (res?.status === 201) {
           setShowBuyNowSuccess(true);
 

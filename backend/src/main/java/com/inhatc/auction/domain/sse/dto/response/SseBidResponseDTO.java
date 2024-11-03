@@ -5,9 +5,9 @@ import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
 public class SseBidResponseDTO {
     private Long id;
@@ -16,7 +16,7 @@ public class SseBidResponseDTO {
     private Long bidAmount;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime bidTime;
+    private LocalDateTime createdAt;
 
     private Long auctionLeftTime;
 }

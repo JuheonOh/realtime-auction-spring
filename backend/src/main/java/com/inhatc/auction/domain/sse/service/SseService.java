@@ -58,42 +58,64 @@ public class SseService {
     private void registerEmitterCallbacks(Long auctionId, SseEmitter emitter) {
         // 연결 종료 시 정리
         emitter.onCompletion(() -> {
-            log.debug("SSE 연결 종료");
+            log.debug("SSE 연결 종료 (경매 ID: {})", auctionId);
             removeEmitterQuietly(auctionId, emitter);
         });
 
         // 타임아웃 시 정리
         emitter.onTimeout(() -> {
-            log.debug("SSE 연결 타임아웃");
+            log.debug("SSE 연결 타임아웃 (경매 ID: {})", auctionId);
             emitter.complete();
             removeEmitterQuietly(auctionId, emitter);
         });
 
         // 에러 발생 시 정리
         emitter.onError(ex -> {
-            log.debug("SSE 연결 에러 발생", ex);
+            log.debug("SSE 연결 에러 발생 (경매 ID: {})", auctionId, ex);
             emitter.complete();
             removeEmitterQuietly(auctionId, emitter);
         });
     }
 
     // 특정 경매의 모든 구독자에게 이벤트 전송
-    private void broadcastEvent(Long auctionId, String eventName, Object data) {
+    private synchronized void broadcastEvent(Long auctionId, String eventName, Object data) {
+        if (auctionId == null) {
+            log.warn("경매 ID가 null입니다");
+            return;
+        }
+
         List<SseEmitter> auctionEmitters = emitters.get(auctionId);
-        if (auctionEmitters != null) {
-            List<SseEmitter> deadEmitters = new ArrayList<>();
+        if (auctionEmitters == null || auctionEmitters.isEmpty()) {
+            return;
+        }
 
-            auctionEmitters.forEach(emitter -> {
+        List<SseEmitter> deadEmitters = new ArrayList<>();
+
+        for (SseEmitter emitter : auctionEmitters) {
+            if (emitter == null) {
+                deadEmitters.add(emitter);
+                continue;
+            }
+
+            try {
+                emitter.send(SseEmitter.event().name(eventName).data(data));
+            } catch (Exception e) {
+                log.error("이벤트 전송 실패 (경매 ID: {}): {}", auctionId, e.getMessage());
+                deadEmitters.add(emitter);
                 try {
-                    emitter.send(SseEmitter.event().name(eventName).data(data));
-                } catch (Exception e) {
-                    deadEmitters.add(emitter);
                     emitter.complete();
+                } catch (Exception ignored) {
+                    // 이미 완료된 emitter는 무시
                 }
-            });
+            }
+        }
 
-            // 죽은 연결 제거
-            deadEmitters.forEach(emitter -> removeEmitterQuietly(auctionId, emitter));
+        // 죽은 연결 제거
+        if (!deadEmitters.isEmpty()) {
+            auctionEmitters.removeAll(deadEmitters);
+            if (auctionEmitters.isEmpty()) {
+                emitters.remove(auctionId);
+            }
         }
     }
 
@@ -109,42 +131,67 @@ public class SseService {
 
     // 1분마다 서버 시간 기준 경매 남은 시간 전송
     @Scheduled(fixedRate = 60000)
-    public void sendServerTime() {
+    public synchronized void sendServerTime() {
+        if (emitters.isEmpty()) {
+            return;
+        }
+
         List<Long> emptyAuctions = new ArrayList<>();
 
-        emitters.forEach((auctionId, auctionEmitters) -> {
+        for (Map.Entry<Long, List<SseEmitter>> entry : emitters.entrySet()) {
+            Long auctionId = entry.getKey();
+            if (auctionId == null) {
+                continue;
+            }
+
+            List<SseEmitter> auctionEmitters = entry.getValue();
+            if (auctionEmitters == null || auctionEmitters.isEmpty()) {
+                emptyAuctions.add(auctionId);
+                continue;
+            }
+
             Long auctionLeftTime = Math.max(auctionRepository.calculateAuctionLeftTime(auctionId), 0L);
             List<SseEmitter> deadEmitters = new ArrayList<>();
 
-            auctionEmitters.forEach(emitter -> {
+            for (SseEmitter emitter : auctionEmitters) {
+                if (emitter == null) {
+                    deadEmitters.add(emitter);
+                    continue;
+                }
+
                 try {
                     emitter.send(SseEmitter.event().name("time").data(auctionLeftTime));
                 } catch (Exception e) {
-                    log.debug("시간 전송 중 에러 발생", e);
+                    log.error("시간 전송 중 에러 발생 (경매 ID: {}): {}", auctionId, e.getMessage());
                     deadEmitters.add(emitter);
                     try {
                         emitter.complete();
                     } catch (Exception ignored) {
-                        // 이미 완료된 emitter에 대한 complete 호출은 무시
+                        // 이미 완료된 emitter는 무시
                     }
                 }
-            });
+            }
 
             // 죽은 연결 제거
-            deadEmitters.forEach(emitter -> removeEmitterQuietly(auctionId, emitter));
-
-            // 해당 경매의 모든 연결이 끊어졌다면 목록에서 제거
-            if (auctionEmitters.isEmpty()) {
-                emptyAuctions.add(auctionId);
+            if (!deadEmitters.isEmpty()) {
+                auctionEmitters.removeAll(deadEmitters);
+                if (auctionEmitters.isEmpty()) {
+                    emptyAuctions.add(auctionId);
+                }
             }
-        });
+        }
 
         // 빈 경매 목록 제거
         emptyAuctions.forEach(emitters::remove);
     }
 
     // 조용히 emitter 제거 (예외 발생하지 않음)
-    private void removeEmitterQuietly(Long auctionId, SseEmitter emitter) {
+    private synchronized void removeEmitterQuietly(Long auctionId, SseEmitter emitter) {
+        if (auctionId == null || emitter == null) {
+            log.warn("경매 ID 또는 emitter가 null입니다");
+            return;
+        }
+
         try {
             List<SseEmitter> auctionEmitters = emitters.get(auctionId);
             if (auctionEmitters != null) {
@@ -154,7 +201,7 @@ public class SseService {
                 }
             }
         } catch (Exception e) {
-            log.debug("SSE 연결 제거 중 오류 발생", e);
+            log.error("SSE 연결 제거 중 오류 발생 (경매 ID: {}): {}", auctionId, e.getMessage());
         }
     }
 
