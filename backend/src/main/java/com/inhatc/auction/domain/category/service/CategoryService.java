@@ -1,11 +1,11 @@
 package com.inhatc.auction.domain.category.service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.inhatc.auction.domain.category.entity.Category;
+import com.inhatc.auction.domain.category.dto.response.CategoryResponseDTO;
 import com.inhatc.auction.domain.category.repository.CategoryRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -15,16 +15,12 @@ import lombok.RequiredArgsConstructor;
 public class CategoryService {
     private final CategoryRepository categoryRepository;
 
-    public List<Category> getCategoryList() {
-        return categoryRepository.findAll();
-    }
-
-    @Transactional
-    public Category createCategory(String name) {
-        Category category = Category.builder()
-                .name(name)
-                .build();
-
-        return categoryRepository.save(category);
+    public List<CategoryResponseDTO> getCategoryList() {
+        return categoryRepository.findAll().stream()
+                .map(category -> CategoryResponseDTO.builder()
+                        .id(category.getId())
+                        .name(category.getName())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

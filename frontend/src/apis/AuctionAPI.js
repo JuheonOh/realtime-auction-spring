@@ -98,16 +98,6 @@ export const getAuctionDetail = async (auctionId) => {
   }
 };
 
-// 입찰 내역 조회
-export const getBidList = async (auctionId) => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/api/bids/${auctionId}`);
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
 // 입찰 스트림 조회
 export const getAuctionBidStream = async (auctionId) => {
   try {

@@ -2,8 +2,6 @@ package com.inhatc.auction.domain.bid.service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -12,7 +10,6 @@ import org.springframework.web.server.ResponseStatusException;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.bid.dto.request.BidRequestDTO;
-import com.inhatc.auction.domain.bid.dto.response.BidResponseDTO;
 import com.inhatc.auction.domain.bid.entity.Bid;
 import com.inhatc.auction.domain.bid.repository.BidRepository;
 import com.inhatc.auction.domain.sse.dto.response.SseBidResponseDTO;
@@ -35,18 +32,6 @@ public class BidService {
   private final BidRepository bidRepository;
   private final AuctionRepository auctionRepository;
   private final SseService sseEmitterService;
-
-  public List<BidResponseDTO> getBidList(Long auctionId) {
-    List<Bid> bids = this.bidRepository.findAllByAuctionId(auctionId);
-    return bids.stream()
-        .map(bid -> BidResponseDTO.builder()
-            .id(bid.getId())
-            .nickname(bid.getUser().getNickname())
-            .bidAmount(bid.getBidAmount())
-            .createdAt(bid.getCreatedAt())
-            .build())
-        .collect(Collectors.toList());
-  }
 
   @Transactional
   public void createBid(HttpServletRequest request, Long auctionId, BidRequestDTO requestDTO) {
