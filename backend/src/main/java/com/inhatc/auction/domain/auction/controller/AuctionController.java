@@ -53,7 +53,7 @@ public class AuctionController {
     }
 
     // 입찰 스트림 조회
-    @GetMapping(value = "/auctions/{auctionId}/bids-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(value = "/{auctionId}/bids-stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter getBidStream(@PathVariable("auctionId") Long auctionId) throws Exception {
         return sseEmitterService.subscribe(auctionId);
     }
