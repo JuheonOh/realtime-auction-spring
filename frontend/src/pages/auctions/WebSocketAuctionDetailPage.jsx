@@ -112,138 +112,129 @@ export default function WebSocketAuctionDetailPage() {
   }, 1000);
 
   // 경매 입찰 소켓 연결
-  const setupWebSocket = useCallback(async () => {
+  useEffect(() => {
     if (!auctionId) return;
 
-    // 이전 웹소켓이 있다면 연결 해제
-    if (socketRef.current) {
-      socketRef.current.close();
-    }
-
-    const newSocket = new WebSocket(`${WS_BASE_URL}/api/auctions/${auctionId}/ws`);
-    socketRef.current = newSocket;
-
-    // 재연결 시도
     const retryInterval = 3000; // 재시도 간격 3초
+    const userId = user?.info?.id || null;
 
-    try {
-      newSocket.onopen = (e) => {
-        console.log("경매 입찰 소켓 연결 성공");
-      };
-
-      newSocket.onclose = (e) => {
-        console.log("경매 입찰 소켓 연결 종료");
-
-        // 정상적인 종료가 아닌 경우 재연결 시도
-        if (!e.wasClean) {
-          console.log(`${retryInterval / 1000}초 후 재연결 시도`);
-          setTimeout(() => {
-            setupWebSocket();
-          }, retryInterval);
-        }
-      };
-
-      newSocket.onerror = (e) => {
-        console.error(e);
-      };
-
-      newSocket.onmessage = (e) => {
-        const res = JSON.parse(e.data);
-
-        // 남은 시간 데이터 받았을 때 (time)
-        if (res.type === "time") {
-          const auctionLeftTime = res.data.auctionLeftTime > 0 ? res.data.auctionLeftTime : 0;
-          setAuction((prev) => ({ ...prev, auctionLeftTime }));
+    const setupWebSocket = () => {
+      try {
+        // 이전 웹소켓이 있다면 연결 해제
+        if (socketRef.current) {
+          socketRef.current.close();
         }
 
-        // 입찰 데이터 받았을 때 (bid)
-        if (res.type === "bid") {
-          // 입찰 실패 메시지
-          if (res.status === 400) {
-            setInValid({ bidAmount: res.message });
-            setShowBidSuccess(false);
-            return;
+        socketRef.current = new WebSocket(`${WS_BASE_URL}/api/auctions/${auctionId}/ws`);
+
+        socketRef.current.onopen = (e) => {
+          console.log("경매 입찰 소켓 연결 성공");
+        };
+
+        socketRef.current.onclose = (e) => {
+          console.log("경매 입찰 소켓 연결 종료");
+
+          // 정상적인 종료가 아닌 경우 재연결 시도
+          if (!e.wasClean) {
+            console.log(`${retryInterval / 1000}초 후 재연결 시도`);
+            setTimeout(() => {
+              setupWebSocket();
+            }, retryInterval);
+          }
+        };
+
+        socketRef.current.onerror = (e) => {
+          console.error(e);
+        };
+
+        socketRef.current.onmessage = (e) => {
+          const res = JSON.parse(e.data);
+
+          // 남은 시간 데이터 받았을 때 (time)
+          if (res.type === "time") {
+            const auctionLeftTime = res.data.auctionLeftTime > 0 ? res.data.auctionLeftTime : 0;
+            setAuction((prev) => ({ ...prev, auctionLeftTime }));
           }
 
-          // 유효성 알림 초기화
-          setInValid({});
+          // 입찰 데이터 받았을 때 (bid)
+          if (res.type === "bid") {
+            // 입찰 실패 메시지
+            if (res.status === 400) {
+              setInValid({ bidAmount: res.message });
+              setShowBidSuccess(false);
+              return;
+            }
 
-          // 최고입찰자 닉네임 업데이트
-          setHighestBidderNickname(res.bidData.nickname);
+            // 유효성 알림 초기화
+            setInValid({});
 
-          // 입찰 성공이고 본인이 입찰한 경우 성공 알림 표시
-          if (res.status === 201 && res.bidData.userId === user.info?.id) {
-            setShowBidSuccess(true);
-            setIsHighestBidder(true);
-          } else {
-            // 입찰 성공 메시지 초기화
-            setShowBidSuccess(false);
-            setIsHighestBidder(false);
+            // 최고입찰자 닉네임 업데이트
+            setHighestBidderNickname(res.bidData.nickname);
+
+            // 입찰 성공이고 본인이 입찰한 경우 성공 알림 표시
+            if (res.status === 201 && res.bidData.userId === userId) {
+              setShowBidSuccess(true);
+              setIsHighestBidder(true);
+            } else {
+              // 입찰 성공 메시지 초기화
+              setShowBidSuccess(false);
+              setIsHighestBidder(false);
+            }
+
+            setBidData((prev) => [
+              ...prev, // 이전 입찰 데이터 유지
+              {
+                id: res.bidData.id, // 입찰 id
+                userId: res.bidData.userId, // 입찰자 id
+                nickname: res.bidData.nickname, // 입찰자 닉네임
+                bidAmount: res.bidData.bidAmount, // 입찰 금액
+                createdAt: new Date(res.bidData.createdAt), // 입찰 시간
+              },
+            ]);
+            setAuction((prev) => ({
+              ...prev, // 이전 상태 유지
+              currentPrice: res.bidData.bidAmount, // 현재 입찰가 업데이트
+              bidCount: prev.bidCount + 1, // 입찰 횟수 업데이트
+              auctionLeftTime: res.bidData.auctionLeftTime, // 남은 시간 업데이트
+            }));
           }
 
-          setBidData((prev) => [
-            ...prev, // 이전 입찰 데이터 유지
-            {
-              id: res.bidData.id, // 입찰 id
-              userId: res.bidData.userId, // 입찰자 id
-              nickname: res.bidData.nickname, // 입찰자 닉네임
-              bidAmount: res.bidData.bidAmount, // 입찰 금액
-              createdAt: new Date(res.bidData.createdAt), // 입찰 시간
-            },
-          ]);
-          setAuction((prev) => ({
-            ...prev, // 이전 상태 유지
-            currentPrice: res.bidData.bidAmount, // 현재 입찰가 업데이트
-            bidCount: prev.bidCount + 1, // 입찰 횟수 업데이트
-            auctionLeftTime: res.bidData.auctionLeftTime, // 남은 시간 업데이트
-          }));
-        }
+          // 즉시 구매 데이터 받았을 때 (buy-now)
+          if (res.type === "buy-now") {
+            const buyNow = res.data;
 
-        // 즉시 구매 데이터 받았을 때 (buy-now)
-        if (res.type === "buy-now") {
-          const buyNow = res.data;
+            setTransaction((prev) => ({
+              ...prev,
+              userId: buyNow.userId,
+              nickname: buyNow.nickname,
+              status: buyNow.status,
+            }));
 
-          setTransaction((prev) => ({
-            ...prev,
-            userId: buyNow.userId,
-            nickname: buyNow.nickname,
-            status: buyNow.status,
-          }));
+            setAuction((prev) => ({
+              ...prev,
+              status: "ENDED",
+              auctionLeftTime: 0,
+              successfulPrice: buyNow.finalPrice,
+            }));
+          }
+        };
+      } catch (err) {
+        console.error("웹소켓 설정 중 에러: ", err);
 
-          setAuction((prev) => ({
-            ...prev,
-            status: "ENDED",
-            auctionLeftTime: 0,
-            successfulPrice: buyNow.finalPrice,
-          }));
-        }
-      };
-    } catch (err) {
-      console.error("웹소켓 설정 중 에러: ", err);
+        // 입찰 소켓 재연결
+        setTimeout(() => {
+          setupWebSocket();
+        }, retryInterval);
+      }
+    };
 
-      // 입찰 소켓 재연결
-      setTimeout(() => {
-        setupWebSocket();
-      }, retryInterval);
-    }
-  }, [auctionId, user.info?.id]);
+    setupWebSocket();
+  }, [auctionId]);
 
   // 초기 데이터 불러오기
   useEffect(() => {
     fetchInitialData();
   }, [fetchInitialData]);
-
-  // 초기 웹소켓 연결
-  useEffect(() => {
-    setupWebSocket();
-
-    // 다른 페이지로 이동 시 웹 소켓 연결 해제
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.close();
-      }
-    };
-  }, [setupWebSocket]);
 
   // 본인이 최고입찰자인 경우 최고입찰자 상태 업데이트
   useEffect(() => {
