@@ -55,6 +55,7 @@ export default function WebSocketAuctionDetailPage() {
   const [isHighestBidder, setIsHighestBidder] = useState(false);
 
   const socketRef = useRef(null);
+  const userIdRef = useRef(null);
 
   // 계정 정보 불러오기
   useEffect(() => {
@@ -63,6 +64,7 @@ export default function WebSocketAuctionDetailPage() {
       try {
         const userInfo = await getUser();
         dispatch(SET_INFO(userInfo.data));
+        userIdRef.current = userInfo.data.id;
       } catch (err) {
         console.error(err);
         clearCookie();
@@ -116,7 +118,6 @@ export default function WebSocketAuctionDetailPage() {
     if (!auctionId) return;
 
     const retryInterval = 3000; // 재시도 간격 3초
-    const userId = user?.info?.id || null;
 
     const setupWebSocket = () => {
       try {
@@ -172,7 +173,7 @@ export default function WebSocketAuctionDetailPage() {
             setHighestBidderNickname(res.bidData.nickname);
 
             // 입찰 성공이고 본인이 입찰한 경우 성공 알림 표시
-            if (res.status === 201 && res.bidData.userId === userId) {
+            if (res.status === 201 && res.bidData.userId === userIdRef.current) {
               setShowBidSuccess(true);
               setIsHighestBidder(true);
             } else {
@@ -629,7 +630,7 @@ export default function WebSocketAuctionDetailPage() {
 
           {/* 차트 */}
           <div>
-            <BidChart bidData={bidData} startPrice={auction?.startPrice} />
+            <BidChart bidData={bidData} startPrice={auction?.startPrice} userId={userIdRef.current} />
           </div>
 
           {/* 상품 설명 */}

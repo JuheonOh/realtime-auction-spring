@@ -40,7 +40,7 @@ const filterChartData = (data, maxPoints = 20) => {
   return result;
 };
 
-export default function BidChart({ bidData, startPrice }) {
+export default function BidChart({ bidData, startPrice, userId }) {
   // const filteredData = filterChartData(bidData);
   const filteredData = bidData;
 
@@ -73,7 +73,7 @@ export default function BidChart({ bidData, startPrice }) {
         backgroundColor: "rgba(0, 0, 0, 0.8)",
         padding: 12,
         titleFont: {
-          size: 14,
+          size: 16,
         },
         bodyFont: {
           size: 14,
@@ -81,7 +81,7 @@ export default function BidChart({ bidData, startPrice }) {
         displayColors: false, // 범례 색상 표시 제거
         position: "nearest", // 툴팁 위치 설정
         yAlign: "bottom", // 툴팁을 항상 데이터 포인트 위에 표시
-        caretPadding: 15, // 툴팁과 데이터 포인트 사이의 간격
+        caretPadding: 16, // 툴팁과 데이터 포인트 사이의 간격
         callbacks: {
           title: function (context) {
             if (context[0].label === "경매 시작") {
@@ -134,25 +134,6 @@ export default function BidChart({ bidData, startPrice }) {
     layout: {
       padding: { left: 25, right: 25 },
     },
-    animation: {
-      duration: 750,
-      easing: "easeInOutQuart",
-      animations: {
-        numbers: {
-          type: "number",
-          duration: 750,
-          delay: (ctx) => ctx.dataIndex * 100, // 순차적 애니메이션
-        },
-        x: {
-          type: "number",
-          easing: "easeOutElastic", // 탄성 효과
-        },
-        y: {
-          type: "number",
-          easing: "easeOutBounce", // 바운스 효과
-        },
-      },
-    },
   };
 
   // 차트 데이터
@@ -174,12 +155,14 @@ export default function BidChart({ bidData, startPrice }) {
         pointHoverRadius: 10,
         pointHitRadius: 20,
         pointBackgroundColor: (ctx) => {
-          // 첫 번째 포인트는 다른 색상으로 표시
-          return ctx.dataIndex === 0 ? "#FFD700" : "#fff";
+          if (bidData[ctx.dataIndex]?.userId === userId) return "#FFD700"; // 내가 입찰한 경우
+          if (ctx.dataIndex === 0) return "#34C759"; // 첫 번째 포인트는 다른 색상으로 표시
+          return "#fff"; // 내가 입찰한 경우가 아니면 흰색으로 표시
         },
         pointBorderColor: (ctx) => {
-          // 첫 번째 포인트는 다른 색상으로 표시
-          return ctx.dataIndex === 0 ? "#FFA500" : "rgb(75, 192, 192)";
+          if (bidData[ctx.dataIndex]?.userId === userId) return "#FFA500"; // 내가 입찰한 경우
+          if (ctx.dataIndex === 0) return "#34C759"; // 첫 번째 포인트는 다른 색상으로 표시
+          return "#4BC0C0";
         },
         borderWidth: 3,
         fill: true,
