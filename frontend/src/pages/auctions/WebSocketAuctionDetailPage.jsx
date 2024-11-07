@@ -5,7 +5,7 @@ import SuccessAlert from "@components/common/alerts/SuccessAlert";
 import BlurOverlay from "@components/common/loading/BlurOverlay";
 import LoadingSpinner from "@components/common/loading/LoadingSpinner";
 import BidChart from "@components/features/auction/BidChart";
-import { SET_INFO } from "@data/redux/store/User";
+import { SET_ACCESS_TOKEN, SET_INFO } from "@data/redux/store/User";
 import { clearCookie } from "@data/storage/Cookie";
 import useInterval from "@hooks/useInterval";
 import { IMAGE_URL, WS_BASE_URL } from "@utils/constant";
@@ -15,6 +15,7 @@ import { Clock, Eye, Gavel, Heart, MessageSquareMore, Share2, Star, Tag, User } 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
+import { refreshAccessToken } from "../../apis/UserAPI";
 
 // 입찰 단위
 const bidUnit = (currentPrice) => {
@@ -147,78 +148,6 @@ export default function WebSocketAuctionDetailPage() {
         socketRef.current.onerror = (e) => {
           console.error(e);
         };
-
-        socketRef.current.onmessage = (e) => {
-          const res = JSON.parse(e.data);
-
-          // 남은 시간 데이터 받았을 때 (time)
-          if (res.type === "time") {
-            const auctionLeftTime = res.data.auctionLeftTime > 0 ? res.data.auctionLeftTime : 0;
-            setAuction((prev) => ({ ...prev, auctionLeftTime }));
-          }
-
-          // 입찰 데이터 받았을 때 (bid)
-          if (res.type === "bid") {
-            // 입찰 실패 메시지
-            if (res.status === 400) {
-              setInValid({ bidAmount: res.message });
-              setShowBidSuccess(false);
-              return;
-            }
-
-            // 유효성 알림 초기화
-            setInValid({});
-
-            // 최고입찰자 닉네임 업데이트
-            setHighestBidderNickname(res.bidData.nickname);
-
-            // 입찰 성공이고 본인이 입찰한 경우 성공 알림 표시
-            if (res.status === 201 && res.bidData.userId === userIdRef.current) {
-              setShowBidSuccess(true);
-              setIsHighestBidder(true);
-            } else {
-              // 입찰 성공 메시지 초기화
-              setShowBidSuccess(false);
-              setIsHighestBidder(false);
-            }
-
-            setBidData((prev) => [
-              ...prev, // 이전 입찰 데이터 유지
-              {
-                id: res.bidData.id, // 입찰 id
-                userId: res.bidData.userId, // 입찰자 id
-                nickname: res.bidData.nickname, // 입찰자 닉네임
-                bidAmount: res.bidData.bidAmount, // 입찰 금액
-                createdAt: new Date(res.bidData.createdAt), // 입찰 시간
-              },
-            ]);
-            setAuction((prev) => ({
-              ...prev, // 이전 상태 유지
-              currentPrice: res.bidData.bidAmount, // 현재 입찰가 업데이트
-              bidCount: prev.bidCount + 1, // 입찰 횟수 업데이트
-              auctionLeftTime: res.bidData.auctionLeftTime, // 남은 시간 업데이트
-            }));
-          }
-
-          // 즉시 구매 데이터 받았을 때 (buy-now)
-          if (res.type === "buy-now") {
-            const buyNow = res.data;
-
-            setTransaction((prev) => ({
-              ...prev,
-              userId: buyNow.userId,
-              nickname: buyNow.nickname,
-              status: buyNow.status,
-            }));
-
-            setAuction((prev) => ({
-              ...prev,
-              status: "ENDED",
-              auctionLeftTime: 0,
-              successfulPrice: buyNow.finalPrice,
-            }));
-          }
-        };
       } catch (err) {
         console.error("웹소켓 설정 중 에러: ", err);
 
@@ -231,6 +160,106 @@ export default function WebSocketAuctionDetailPage() {
 
     setupWebSocket();
   }, [auctionId]);
+
+  useEffect(() => {
+    socketRef.current.onmessage = async (e) => {
+      const res = JSON.parse(e.data);
+
+      // 본인의 액세스 토큰이 만료되었을 때 (token_expired)
+      if (res.type === "token_expired") {
+        try {
+          // 리프레쉬 토큰으로 새 액세스 토큰 갱신
+          const newAccessToken = await refreshAccessToken();
+
+          // 새 액세스 토큰으로 user store 업데이트
+          dispatch(SET_ACCESS_TOKEN(newAccessToken));
+
+          console.log(newAccessToken);
+
+          const message = {
+            type: "bid",
+            data: bidAmount,
+            accessToken: newAccessToken,
+          };
+
+          // 새 액세스 토큰으로 웹소켓 메시지 재전송
+          socketRef.current.send(JSON.stringify(message));
+        } catch (err) {
+          console.log(err);
+        }
+
+        return;
+      }
+
+      // 남은 시간 데이터 받았을 때 (time)
+      if (res.type === "time") {
+        const auctionLeftTime = res.data.auctionLeftTime > 0 ? res.data.auctionLeftTime : 0;
+        setAuction((prev) => ({ ...prev, auctionLeftTime }));
+      }
+
+      // 입찰 데이터 받았을 때 (bid)
+      if (res.type === "bid") {
+        // 입찰 실패 메시지
+        if (res.status === 400) {
+          setInValid({ bidAmount: res.message });
+          setShowBidSuccess(false);
+          return;
+        }
+
+        // 유효성 알림 초기화
+        setInValid({});
+
+        // 최고입찰자 닉네임 업데이트
+        setHighestBidderNickname(res.bidData.nickname);
+
+        // 입찰 성공이고 본인이 입찰한 경우 성공 알림 표시
+        if (res.status === 201 && res.bidData.userId === userIdRef.current) {
+          setShowBidSuccess(true);
+          setIsHighestBidder(true);
+        } else {
+          // 입찰 성공 메시지 초기화
+          setShowBidSuccess(false);
+          setIsHighestBidder(false);
+        }
+
+        setBidData((prev) => [
+          ...prev, // 이전 입찰 데이터 유지
+          {
+            id: res.bidData.id, // 입찰 id
+            userId: res.bidData.userId, // 입찰자 id
+            nickname: res.bidData.nickname, // 입찰자 닉네임
+            bidAmount: res.bidData.bidAmount, // 입찰 금액
+            createdAt: new Date(res.bidData.createdAt), // 입찰 시간
+          },
+        ]);
+        setAuction((prev) => ({
+          ...prev, // 이전 상태 유지
+          currentPrice: res.bidData.bidAmount, // 현재 입찰가 업데이트
+          bidCount: prev.bidCount + 1, // 입찰 횟수 업데이트
+          auctionLeftTime: res.bidData.auctionLeftTime, // 남은 시간 업데이트
+        }));
+      }
+
+      // 즉시 구매 데이터 받았을 때 (buy-now)
+      if (res.type === "buy-now") {
+        const buyNow = res.data;
+
+        setTransaction((prev) => ({
+          ...prev,
+          userId: buyNow.userId,
+          nickname: buyNow.nickname,
+          status: buyNow.status,
+        }));
+
+        setAuction((prev) => ({
+          ...prev,
+          status: "ENDED",
+          auctionLeftTime: 0,
+          successfulPrice: buyNow.finalPrice,
+        }));
+      }
+    };
+  }, [auctionId, user.accessToken, dispatch, bidAmount]);
 
   // 초기 데이터 불러오기
   useEffect(() => {

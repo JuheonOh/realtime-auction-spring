@@ -31,6 +31,7 @@ import com.inhatc.auction.global.constant.AuctionStatus;
 import com.inhatc.auction.global.constant.TransactionStatus;
 import com.inhatc.auction.global.security.jwt.JwtTokenProvider;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
@@ -70,16 +71,24 @@ public class WebSocketHandler extends TextWebSocketHandler {
         JSONObject response = new JSONObject();
         if (accessToken == null) {
             response.put("type", "error");
-            response.put("status", 400);
+            response.put("status", 401);
             response.put("message", "로그인이 필요합니다.");
             session.sendMessage(new TextMessage(response.toString()));
             return;
         }
 
-        if (!jwtTokenProvider.validateToken(accessToken)) {
-            response.put("type", "error");
-            response.put("status", 400);
-            response.put("message", "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
+        try {
+            if (!jwtTokenProvider.validateToken(accessToken)) {
+                response.put("type", "error");
+                response.put("status", 401);
+                response.put("message", "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
+                session.sendMessage(new TextMessage(response.toString()));
+                return;
+            }
+        } catch (ExpiredJwtException e) {
+            response.put("type", "token_expired");
+            response.put("status", 401);
+            response.put("message", "토큰이 만료되었습니다.");
             session.sendMessage(new TextMessage(response.toString()));
             return;
         }
