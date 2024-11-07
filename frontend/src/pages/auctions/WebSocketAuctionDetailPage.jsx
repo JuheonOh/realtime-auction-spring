@@ -164,9 +164,12 @@ export default function WebSocketAuctionDetailPage() {
   useEffect(() => {
     socketRef.current.onmessage = async (e) => {
       const res = JSON.parse(e.data);
+      const type = res.type;
+      const status = res.status;
+      const data = res.data;
 
       // 본인의 액세스 토큰이 만료되었을 때 (token_expired)
-      if (res.type === "token_expired") {
+      if (type === "token_expired") {
         try {
           // 리프레쉬 토큰으로 새 액세스 토큰 갱신
           const newAccessToken = await refreshAccessToken();
@@ -174,11 +177,9 @@ export default function WebSocketAuctionDetailPage() {
           // 새 액세스 토큰으로 user store 업데이트
           dispatch(SET_ACCESS_TOKEN(newAccessToken));
 
-          console.log(newAccessToken);
-
           const message = {
             type: "bid",
-            data: bidAmount,
+            data: { bidAmount },
             accessToken: newAccessToken,
           };
 
@@ -192,16 +193,18 @@ export default function WebSocketAuctionDetailPage() {
       }
 
       // 남은 시간 데이터 받았을 때 (time)
-      if (res.type === "time") {
-        const auctionLeftTime = res.data.auctionLeftTime > 0 ? res.data.auctionLeftTime : 0;
+      if (type === "time") {
+        const auctionLeftTime = data.auctionLeftTime > 0 ? data.auctionLeftTime : 0;
         setAuction((prev) => ({ ...prev, auctionLeftTime }));
       }
 
       // 입찰 데이터 받았을 때 (bid)
-      if (res.type === "bid") {
+      if (type === "bid") {
+        const bidData = data?.bidData;
+
         // 입찰 실패 메시지
-        if (res.status === 400) {
-          setInValid({ bidAmount: res.message });
+        if (status === 400) {
+          setInValid({ bidAmount: data.message });
           setShowBidSuccess(false);
           return;
         }
@@ -210,10 +213,10 @@ export default function WebSocketAuctionDetailPage() {
         setInValid({});
 
         // 최고입찰자 닉네임 업데이트
-        setHighestBidderNickname(res.bidData.nickname);
+        setHighestBidderNickname(bidData.nickname);
 
         // 입찰 성공이고 본인이 입찰한 경우 성공 알림 표시
-        if (res.status === 201 && res.bidData.userId === userIdRef.current) {
+        if (status === 201 && bidData.userId === userIdRef.current) {
           setShowBidSuccess(true);
           setIsHighestBidder(true);
         } else {
@@ -225,37 +228,37 @@ export default function WebSocketAuctionDetailPage() {
         setBidData((prev) => [
           ...prev, // 이전 입찰 데이터 유지
           {
-            id: res.bidData.id, // 입찰 id
-            userId: res.bidData.userId, // 입찰자 id
-            nickname: res.bidData.nickname, // 입찰자 닉네임
-            bidAmount: res.bidData.bidAmount, // 입찰 금액
-            createdAt: new Date(res.bidData.createdAt), // 입찰 시간
+            id: bidData.id, // 입찰 id
+            userId: bidData.userId, // 입찰자 id
+            nickname: bidData.nickname, // 입찰자 닉네임
+            bidAmount: bidData.bidAmount, // 입찰 금액
+            createdAt: new Date(bidData.createdAt), // 입찰 시간
           },
         ]);
         setAuction((prev) => ({
           ...prev, // 이전 상태 유지
-          currentPrice: res.bidData.bidAmount, // 현재 입찰가 업데이트
+          currentPrice: bidData.bidAmount, // 현재 입찰가 업데이트
           bidCount: prev.bidCount + 1, // 입찰 횟수 업데이트
-          auctionLeftTime: res.bidData.auctionLeftTime, // 남은 시간 업데이트
+          auctionLeftTime: bidData.auctionLeftTime, // 남은 시간 업데이트
         }));
       }
 
       // 즉시 구매 데이터 받았을 때 (buy-now)
-      if (res.type === "buy-now") {
-        const buyNow = res.data;
+      if (type === "buy-now") {
+        const buyNowData = data?.buyNowData;
 
         setTransaction((prev) => ({
           ...prev,
-          userId: buyNow.userId,
-          nickname: buyNow.nickname,
-          status: buyNow.status,
+          userId: buyNowData.userId,
+          nickname: buyNowData.nickname,
+          status: buyNowData.status,
         }));
 
         setAuction((prev) => ({
           ...prev,
           status: "ENDED",
           auctionLeftTime: 0,
-          successfulPrice: buyNow.finalPrice,
+          successfulPrice: prev.buyNowPrice,
         }));
       }
     };
@@ -366,8 +369,10 @@ export default function WebSocketAuctionDetailPage() {
     try {
       const message = {
         type: "bid",
-        data: bidAmount,
         accessToken: user.accessToken,
+        data: {
+          bidAmount,
+        },
       };
 
       // 입찰 요청

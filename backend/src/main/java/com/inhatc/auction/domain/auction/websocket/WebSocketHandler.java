@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -19,6 +19,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.bid.entity.Bid;
@@ -46,6 +47,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final TransactionRepository transactionRepository;
 
     private final Map<Long, Set<WebSocketSession>> auctionRooms = new ConcurrentHashMap<>();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override // 웹 소켓 연결시
     public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
@@ -57,39 +59,29 @@ public class WebSocketHandler extends TextWebSocketHandler {
         auctionRoom.add(session);
     }
 
-    @SuppressWarnings("unchecked")
     @Override // 데이터 통신시
     protected void handleTextMessage(@NonNull WebSocketSession session, @NonNull TextMessage message) throws Exception {
         Long auctionId = getAuctionId(session);
-        JSONParser parser = new JSONParser();
-        JSONObject payload = (JSONObject) parser.parse(message.getPayload());
 
-        String type = (String) payload.get("type");
-        Object data = payload.get("data");
-        String accessToken = (String) payload.get("accessToken");
+        WebSocketRequestDTO request = objectMapper.readValue(message.getPayload(), WebSocketRequestDTO.class);
+        String type = request.getType();
+        Map<String, String> data = request.getData();
+        String accessToken = request.getAccessToken();
 
-        JSONObject response = new JSONObject();
         if (accessToken == null) {
-            response.put("type", "error");
-            response.put("status", 401);
-            response.put("message", "로그인이 필요합니다.");
-            session.sendMessage(new TextMessage(response.toString()));
+            sendErrorMessage(session, HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
             return;
         }
 
         try {
             if (!jwtTokenProvider.validateToken(accessToken)) {
-                response.put("type", "error");
-                response.put("status", 401);
-                response.put("message", "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
-                session.sendMessage(new TextMessage(response.toString()));
                 return;
             }
         } catch (ExpiredJwtException e) {
-            response.put("type", "token_expired");
-            response.put("status", 401);
-            response.put("message", "토큰이 만료되었습니다.");
-            session.sendMessage(new TextMessage(response.toString()));
+            sendErrorMessage(session, HttpStatus.FORBIDDEN, "토큰이 만료되었습니다.");
+            return;
+        } catch (Exception e) {
+            sendErrorMessage(session, HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
             return;
         }
 
@@ -99,44 +91,32 @@ public class WebSocketHandler extends TextWebSocketHandler {
         // 사용자 조회
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
-            response.put("type", "error");
-            response.put("status", 400);
-            response.put("message", "사용자를 찾을 수 없습니다.");
-            session.sendMessage(new TextMessage(response.toString()));
+            sendErrorMessage(session, HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.");
             return;
         }
 
         // 경매 조회
         Auction auction = auctionRepository.findById(auctionId).orElse(null);
         if (auction == null) {
-            response.put("type", "error");
-            response.put("status", 400);
-            response.put("message", "경매를 찾을 수 없습니다.");
-            session.sendMessage(new TextMessage(response.toString()));
+            sendErrorMessage(session, HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다.");
             return;
         }
 
         // 현재 경매가 종료된 경우
         if (auction.getAuctionEndTime().isBefore(LocalDateTime.now())) {
-            response.put("type", "error");
-            response.put("status", 400);
-            response.put("message", "종료된 경매에는 입찰할 수 없습니다.");
-            session.sendMessage(new TextMessage(response.toString()));
+            sendErrorMessage(session, HttpStatus.BAD_REQUEST, "종료된 경매에는 입찰할 수 없습니다.");
             return;
         }
 
         if (type.equals("bid")) {
             // 입찰하려는 경매가 내가 등록한 경매인 경우
             if (auction.getUser().getId() == user.getId()) {
-                response.put("type", "error");
-                response.put("status", 400);
-                response.put("message", "내가 등록한 경매에는 입찰할 수 없습니다.");
-                session.sendMessage(new TextMessage(response.toString()));
+                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 입찰할 수 없습니다.");
                 return;
             }
 
-            // 입찰 금액
-            Long bidAmount = (Long) data;
+            // 입찰 금액 (String -> Long)
+            Long bidAmount = Long.parseLong(data.get("bidAmount"));
 
             // 입찰 횟수 조회
             Boolean isFirstBid = bidRepository.findBidCountByAuctionId(auctionId).orElse(null) == 0;
@@ -144,27 +124,20 @@ public class WebSocketHandler extends TextWebSocketHandler {
             // 현재 최고입찰자가 본인인 경우 입찰할 수 없음
             Long currentHighestBidUserId = this.bidRepository.findCurrentHighestBidUserId(auctionId).orElse(null);
             if (currentHighestBidUserId != null && currentHighestBidUserId == user.getId()) {
-                response.put("type", "error");
-                response.put("status", 400);
-                response.put("message", "현재 고객님이 최고입찰자입니다.");
-                session.sendMessage(new TextMessage(response.toString()));
+                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "현재 고객님이 최고입찰자입니다.");
                 return;
             }
 
             // 첫 입찰의 경우 시작가와 같거나 높아야 함
             if (isFirstBid) {
                 if (bidAmount < auction.getStartPrice()) {
-                    response.put("status", 400);
-                    response.put("message", "입찰 금액이 시작가와 같거나 높아야 합니다");
-                    session.sendMessage(new TextMessage(response.toString()));
+                    sendErrorMessage(session, HttpStatus.BAD_REQUEST, "입찰 금액이 시작가와 같거나 높아야 합니다");
                     return;
                 }
             } else {
                 // 첫 입찰이 아닌 경우 현재 경매 가격보다 높아야 함
                 if (bidAmount <= auction.getCurrentPrice()) {
-                    response.put("status", 400);
-                    response.put("message", "입찰 금액을 현재 경매 가격보다 높게 입력해주세요.");
-                    session.sendMessage(new TextMessage(response.toString()));
+                    sendErrorMessage(session, HttpStatus.BAD_REQUEST, "입찰 금액을 현재 경매 가격보다 높게 입력해주세요.");
                     return;
                 }
             }
@@ -186,47 +159,54 @@ public class WebSocketHandler extends TextWebSocketHandler {
             Long auctionLeftTime = Math.max(0,
                     Duration.between(LocalDateTime.now(), auction.getAuctionEndTime()).toSeconds());
 
-            JSONObject bidData = new JSONObject();
-            bidData.put("id", bid.getId());
-            bidData.put("userId", bid.getUser().getId());
-            bidData.put("nickname", bid.getUser().getNickname());
-            bidData.put("bidAmount", bid.getBidAmount());
-            bidData.put("createdAt", bid.getCreatedAt().toString());
-            bidData.put("auctionLeftTime", auctionLeftTime);
+            // 입찰 데이터
+            WebSocketResponseDTO.BidData bidData = WebSocketResponseDTO.BidData.builder()
+                    .id(bid.getId())
+                    .userId(bid.getUser().getId())
+                    .nickname(bid.getUser().getNickname())
+                    .bidAmount(bid.getBidAmount())
+                    .createdAt(bid.getCreatedAt().toString())
+                    .auctionLeftTime(auctionLeftTime)
+                    .build();
 
-            response.clear();
-            response.put("type", "bid");
-            response.put("userId", bid.getUser().getId());
-            response.put("status", 201);
-            response.put("message", "입찰이 완료되었습니다.");
-            response.put("bidData", bidData);
+            // 메시지 + 입찰 데이터
+            WebSocketResponseDTO.BidResponse bidResponse = WebSocketResponseDTO.BidResponse.builder()
+                    .message("입찰이 완료되었습니다.")
+                    .bidData(bidData)
+                    .build();
+
+            // 응답용 DTO
+            WebSocketResponseDTO response = WebSocketResponseDTO.builder()
+                    .type("bid")
+                    .status(201)
+                    .data(bidResponse)
+                    .build();
 
             Set<WebSocketSession> auctionRoom = auctionRooms.get(auctionId);
             if (auctionRoom != null) {
                 for (WebSocketSession s : auctionRoom) {
                     try {
-                        s.sendMessage(new TextMessage(response.toString()));
+                        s.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
                     } catch (IOException e) {
                         log.error("웹소켓 통신 에러 : {}", e.getMessage());
                     }
                 }
             }
         } else if (type.equals("buy-now")) {
-            // log.info("즉시 구매 요청한 사용자 닉네임 : {}", user.getNickname());
+            // 즉시 구매가 가능한 경매인지 확인
+            if (auction.getBuyNowPrice() == 0) {
+                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "즉시 구매가 가능한 경매가 아닙니다.");
+                return;
+            }
 
+            // 즉시 구매하려는 경매가 내가 등록한 경매인 경우
             if (auction.getUser().getId() == user.getId()) {
-                response.put("type", "error");
-                response.put("status", 400);
-                response.put("message", "내가 등록한 경매에는 즉시 구매할 수 없습니다.");
-                session.sendMessage(new TextMessage(response.toString()));
+                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 즉시 구매할 수 없습니다.");
                 return;
             }
 
             if (auction.getAuctionEndTime().isBefore(LocalDateTime.now())) {
-                response.put("type", "error");
-                response.put("status", 400);
-                response.put("message", "종료된 경매에는 즉시 구매할 수 없습니다.");
-                session.sendMessage(new TextMessage(response.toString()));
+                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "종료된 경매에는 즉시 구매할 수 없습니다.");
                 return;
             }
 
@@ -247,25 +227,30 @@ public class WebSocketHandler extends TextWebSocketHandler {
             this.transactionRepository.save(transaction);
             this.auctionRepository.save(auction);
 
-            // 경매 종료 알림
+            // 즉시 구매 데이터
+            WebSocketResponseDTO.BuyNowData buyNowData = WebSocketResponseDTO.BuyNowData.builder()
+                    .userId(user.getId())
+                    .nickname(user.getNickname())
+                    .status(TransactionStatus.COMPLETED.toString())
+                    .build();
 
-            JSONObject buyNowData = new JSONObject();
-            buyNowData.put("userId", user.getId());
-            buyNowData.put("nickname", user.getNickname());
-            buyNowData.put("finalPrice", auction.getBuyNowPrice());
-            buyNowData.put("status", TransactionStatus.COMPLETED.toString());
+            // 메시지 + 즉시 구매 데이터
+            WebSocketResponseDTO.BuyNowResponse buyNowResponse = WebSocketResponseDTO.BuyNowResponse.builder()
+                    .message("즉시 구매가 완료되었습니다.")
+                    .buyNowData(buyNowData)
+                    .build();
 
-            response.clear();
-            response.put("type", "buy-now");
-            response.put("status", 201);
-            response.put("message", "즉시 구매가 완료되었습니다.");
-            response.put("data", buyNowData);
+            WebSocketResponseDTO response = WebSocketResponseDTO.builder()
+                    .type("buy-now")
+                    .status(201)
+                    .data(buyNowResponse)
+                    .build();
 
             Set<WebSocketSession> auctionRoom = auctionRooms.get(auctionId);
             if (auctionRoom != null) {
                 for (WebSocketSession s : auctionRoom) {
                     try {
-                        s.sendMessage(new TextMessage(response.toString()));
+                        s.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
                     } catch (IOException e) {
                         log.error("웹소켓 통신 에러 : {}", e.getMessage());
                     }
@@ -320,6 +305,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    // 경매 ID 추출
     private Long getAuctionId(WebSocketSession session) {
         URI uri = session.getUri();
         if (uri == null) {
@@ -338,4 +324,20 @@ public class WebSocketHandler extends TextWebSocketHandler {
             throw new IllegalStateException("경매 ID가 유효한 숫자가 아닙니다: " + pathParts[3]);
         }
     }
+
+    // 오류 메시지 전송
+    private void sendErrorMessage(WebSocketSession session, HttpStatus status, String message) throws IOException {
+        WebSocketResponseDTO.Message msg = WebSocketResponseDTO.Message.builder()
+                .message(message)
+                .build();
+
+        WebSocketResponseDTO response = WebSocketResponseDTO.builder()
+                .type("error")
+                .status(status.value())
+                .data(msg)
+                .build();
+
+        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
+    }
+
 }
