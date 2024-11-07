@@ -45,7 +45,7 @@ UserApi.interceptors.response.use(
 );
 
 // 토큰 갱신
-const refreshAccessToken = async () => {
+export const refreshAccessToken = async () => {
   try {
     const refreshToken = getCookie("refreshToken");
     const response = await axios.get(`${API_BASE_URL}/api/auth/refresh`, {

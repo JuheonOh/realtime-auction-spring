@@ -6,6 +6,8 @@ import Private from "@config/Private";
 import AuctionCreatePage from "@pages/auctions/AuctionCreatePage";
 import AuctionDetailPage from "@pages/auctions/AuctionDetailPage";
 import AuctionListPage from "@pages/auctions/AuctionListPage";
+import WebSocketAuctionDetailPage from "@pages/auctions/WebSocketAuctionDetailPage";
+import WebSocketTestPage from "@pages/auctions/WebSocketTestPage";
 import ContactPage from "@pages/common/ContactPage";
 import HomePage from "@pages/common/HomePage";
 import NotFoundPage from "@pages/common/NotFoundPage";
@@ -29,7 +31,9 @@ export default function Router() {
         <Route element={<Layout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/auctions" element={<AuctionListPage />} />
-          <Route path="/auctions/:auctionId/" element={<AuctionDetailPage />} />
+          <Route path="/auctions/:auctionId/" element={<WebSocketAuctionDetailPage />} />
+          <Route path="/auctions/:auctionId/sse" element={<AuctionDetailPage />} />
+          <Route path="/auctions/:auctionId/wsTest" element={<WebSocketTestPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/support" element={<SupportPage />} />
         </Route>

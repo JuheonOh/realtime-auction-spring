@@ -1,6 +1,7 @@
 package com.inhatc.auction.domain.auth.entity;
 
 import com.inhatc.auction.domain.user.entity.User;
+import com.inhatc.auction.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -22,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Auth {
+public class Auth extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
