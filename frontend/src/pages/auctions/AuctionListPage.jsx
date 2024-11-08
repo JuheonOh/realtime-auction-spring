@@ -94,7 +94,7 @@ export default function AuctionListPage() {
       {isLoading || isError ? (
         <LoadingSpinner isLoading={isLoading} isError={isError} message="경매 목록" />
       ) : (
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {filteredAndSortedAuctions.map((auction) => (
             <AuctionCard key={auction.id} auction={auction} />
           ))}

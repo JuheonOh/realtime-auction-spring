@@ -20,7 +20,7 @@ export default function AuctionCard({ auction }) {
       {/* 상품 정보 */}
       <div className="p-4 flex-grow flex flex-col gap-y-4">
         {/* 상품 제목 */}
-        <h2 className="h-16 text-xl font-semibold line-clamp-2 text-ellipsis break-keep">
+        <h2 className="h-14 text-xl 2xl:text-lg font-semibold line-clamp-2 text-ellipsis">
           <Link to={`/auctions/${auction.id}`}>{auction.title}</Link>
         </h2>
 
@@ -34,7 +34,7 @@ export default function AuctionCard({ auction }) {
         </div>
 
         {/* 상품 가격 및 즉시 구매가 */}
-        <div className="flex flex-col gap-y-1 mt-auto">
+        <div className="flex flex-col h-16 gap-y-1 mt-auto justify-end">
           {auction.buyNowPrice > 0 && (
             <div className="flex items-center justify-end gap-x-2">
               <span className="font-semibold text-red-500">즉시 구매가</span>
