@@ -1,0 +1,17 @@
+{
+	"ulid": "01JCB6111EGC5307AYBJ73Y2BS",
+	"minTime": 1731236439671,
+	"maxTime": 1731240000000,
+	"stats": {
+		"numSamples": 137939,
+		"numSeries": 1386,
+		"numChunks": 2080
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01JCB6111EGC5307AYBJ73Y2BS"
+		]
+	},
+	"version": 1
+}

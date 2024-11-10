@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.lang.NonNull;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
+import com.inhatc.auction.global.constant.AuctionStatus;
 
 public interface AuctionRepository extends JpaRepository<Auction, Long> {
     // 현재 시간보다 경매 종료 시간 + minutes분 이후인 경매 조회
@@ -35,4 +36,11 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     // 경매 입찰 수 내림차순 조회 (주목할 만한 경매)
     @Query("SELECT a FROM Auction a WHERE a.auctionEndTime > NOW() ORDER BY (SELECT COUNT(b) FROM Bid b WHERE b.auction.id = a.id) DESC LIMIT 4")
     List<Auction> findAllByOrderByBidCountDesc();
+
+    // 서버 중단 시점 이전에 종료되지 않은 모든 경매 조회
+    @Query("SELECT a FROM Auction a WHERE a.status = :status AND a.auctionEndTime > :serverStopTime")
+    List<Auction> findAuctionsForDowntimeCompensation(
+            @Param("status") AuctionStatus status,
+            @Param("serverStopTime") LocalDateTime serverStopTime);
+
 }

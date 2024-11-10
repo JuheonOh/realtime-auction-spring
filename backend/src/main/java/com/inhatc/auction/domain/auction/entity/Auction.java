@@ -1,5 +1,6 @@
 package com.inhatc.auction.domain.auction.entity;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -101,6 +102,10 @@ public class Auction extends BaseTimeEntity {
 
     public void updateStatus(AuctionStatus status) {
         this.status = status;
+    }
+
+    public void extendEndTime(Duration downtime) {
+        this.auctionEndTime = this.auctionEndTime.plus(downtime);
     }
 
 }
