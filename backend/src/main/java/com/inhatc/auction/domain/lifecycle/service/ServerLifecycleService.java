@@ -30,13 +30,13 @@ public class ServerLifecycleService {
         LocalDateTime startupTime = LocalDateTime.now();
         LocalDateTime lastShutdownTime = fileUtils.readLastShutdownTime();
 
-        if (lastShutdownTime != null) {
-            // 마지막 종료 기록을 찾아서 시작 시간만 업데이트
-            ServerLifecycle lifecycle = serverLifecycleRepository
-                    .findLastShutdownTime(lastShutdownTime)
-                    .orElseGet(() -> ServerLifecycle.builder().shutdownTime(lastShutdownTime).build());
+        // 마지막 종료 기록을 찾기
+        ServerLifecycle lifecycle = serverLifecycleRepository
+                .findLastShutdownTime(lastShutdownTime)
+                .orElse(null);
+
+        if (lifecycle != null) {
             lifecycle.recordStartup(startupTime);
-            serverLifecycleRepository.save(lifecycle);
 
             // 경매 종료 시간 보상 처리
             compensateAuctionEndTimes(lastShutdownTime, startupTime);
