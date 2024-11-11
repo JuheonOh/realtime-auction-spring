@@ -3,8 +3,6 @@ package com.inhatc.auction.domain.lifecycle.entity;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import org.springframework.boot.context.properties.bind.DefaultValue;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
