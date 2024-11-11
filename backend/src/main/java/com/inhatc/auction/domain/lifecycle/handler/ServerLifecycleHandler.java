@@ -16,18 +16,14 @@ import lombok.extern.log4j.Log4j2;
 public class ServerLifecycleHandler {
     private final ServerLifecycleService serverLifecycleService;
 
-    @EventListener(ApplicationReadyEvent.class) // 서버 시작 시 호출
+    // 서버 시작 시 호출
+    @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
         log.info("서버가 시작되었습니다.");
         serverLifecycleService.handleStartup();
     }
 
-    // @PreDestroy // 서버 종료 시 호출
-    // public void onShutdown() {
-    // log.info("서버가 종료되었습니다.");
-    // serverLifecycleService.handleShutdown();
-    // }
-
+    // 서버 종료 시 호출
     @PostConstruct
     public void onShutdown() {
         // Shutdown Hook 등록

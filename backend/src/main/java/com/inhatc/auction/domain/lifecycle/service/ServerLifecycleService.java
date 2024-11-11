@@ -36,10 +36,17 @@ public class ServerLifecycleService {
                 .orElse(null);
 
         if (lifecycle != null) {
+            // 서버 시작 시간 기록
             lifecycle.recordStartup(startupTime);
 
             // 경매 종료 시간 보상 처리
             compensateAuctionEndTimes(lastShutdownTime, startupTime);
+
+            // 보상 처리 완료
+            lifecycle.successCompensation();
+
+            // 보상 처리 완료 메시지 로그
+            log.info("경매 종료 시간 보상 처리 완료");
         }
     }
 
@@ -77,5 +84,6 @@ public class ServerLifecycleService {
         }
 
         auctionRepository.saveAll(auctions);
+        log.info("경매 종료 시간 보상 처리 완료");
     }
 }
