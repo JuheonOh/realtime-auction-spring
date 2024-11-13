@@ -13,7 +13,7 @@ import lombok.extern.log4j.Log4j2;
 @Component
 @Log4j2
 public class FileUtils {
-    private static final String SHUTDOWN_TIME_FILE = "shutdown_time.txt";
+    private static final String SHUTDOWN_TIME_FILE = "shutdown_time.log";
 
     public void writeShutdownTime(LocalDateTime time) {
         try {
