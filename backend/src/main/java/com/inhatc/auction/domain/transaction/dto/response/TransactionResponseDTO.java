@@ -11,4 +11,5 @@ public class TransactionResponseDTO {
     private Long userId;
     private String nickname;
     private TransactionStatus status;
+    private Long finalPrice;
 }

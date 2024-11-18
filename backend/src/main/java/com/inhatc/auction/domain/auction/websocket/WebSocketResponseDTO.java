@@ -1,5 +1,7 @@
 package com.inhatc.auction.domain.auction.websocket;
 
+import com.inhatc.auction.global.constant.TransactionStatus;
+
 import lombok.Builder;
 import lombok.Getter;
 
@@ -47,5 +49,21 @@ public class WebSocketResponseDTO {
     public static class BuyNowResponse {
         private String message;
         private BuyNowData buyNowData;
+    }
+
+    @Getter
+    @Builder
+    public static class TransactionData {
+        private Long userId;
+        private String nickname;
+        private TransactionStatus status;
+        private Long successfulPrice;
+    }
+
+    @Getter
+    @Builder
+    public static class TransactionResponse {
+        private String message;
+        private TransactionData transactionData;
     }
 }

@@ -259,6 +259,41 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
     }
 
+    // 경매 종료 알림 전송
+    public void broadcastEnded(Auction auction) {
+        Set<WebSocketSession> auctionRoom = auctionRooms.get(auction.getId());
+        User highestBidder = auction.getBids().get(auction.getBids().size() - 1).getUser();
+
+        WebSocketResponseDTO.TransactionData transactionData = WebSocketResponseDTO.TransactionData.builder()
+                .userId(highestBidder.getId())
+                .nickname(highestBidder.getNickname())
+                .status(TransactionStatus.COMPLETED)
+                .successfulPrice(auction.getSuccessfulPrice())
+                .build();
+
+        WebSocketResponseDTO.TransactionResponse transactionResponse = WebSocketResponseDTO.TransactionResponse
+                .builder()
+                .message("경매가 종료되었습니다.")
+                .transactionData(transactionData)
+                .build();
+
+        WebSocketResponseDTO response = WebSocketResponseDTO.builder()
+                .type("ended")
+                .status(200)
+                .data(transactionResponse)
+                .build();
+
+        if (auctionRoom != null) {
+            for (WebSocketSession s : auctionRoom) {
+                try {
+                    s.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
+                } catch (IOException e) {
+                    log.error("웹소켓 통신 에러 : {}", e.getMessage());
+                }
+            }
+        }
+    }
+
     // 경매 남은 시간 전송
     @SuppressWarnings("unchecked")
     @Scheduled(fixedRate = 60000)

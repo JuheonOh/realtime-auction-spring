@@ -4,6 +4,7 @@ import InValidAlert from "@components/common/alerts/InValidAlert";
 import SuccessAlert from "@components/common/alerts/SuccessAlert";
 import BlurOverlay from "@components/common/loading/BlurOverlay";
 import LoadingSpinner from "@components/common/loading/LoadingSpinner";
+import ImageSlider from "@components/common/sliders/ImageSlider";
 import BidChart from "@components/features/auction/BidChart";
 import { SET_ACCESS_TOKEN, SET_INFO } from "@data/redux/store/User";
 import { clearCookie } from "@data/storage/Cookie";
@@ -16,7 +17,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
 import { refreshAccessToken } from "../../apis/UserAPI";
-import ImageSlider from "@components/common/sliders/ImageSlider";
 
 // 입찰 단위
 const bidUnit = (currentPrice) => {
@@ -262,6 +262,19 @@ export default function WebSocketAuctionDetailPage() {
           successfulPrice: prev.buyNowPrice,
         }));
       }
+
+      // 경매 종료 데이터 받았을 때 (ended)
+      if (type === "ended") {
+        const transactionData = data?.transactionData;
+
+        setTransaction((prev) => ({
+          ...prev,
+          userId: transactionData.userId,
+          nickname: transactionData.nickname,
+          status: transactionData.status,
+          finalPrice: transactionData.successfulPrice,
+        }));
+      }
     };
   }, [auctionId, user.accessToken, dispatch, bidAmount]);
 
@@ -469,7 +482,7 @@ export default function WebSocketAuctionDetailPage() {
                       <Gavel className="w-5 h-5 text-blue-500" />
                       <span className="font-bold text-lg text-gray-700">최종 거래가</span>
                     </div>
-                    <span className={`font-bold text-blue-600 block text-right ${auction.buyNowPrice.toString().length > 12 ? "text-xl" : "text-2xl"}`}>{auction.buyNowPrice.toLocaleString()}원</span>
+                    <span className={`font-bold text-blue-600 block text-right ${transaction.finalPrice.toString().length > 12 ? "text-xl" : "text-2xl"}`}>{transaction.finalPrice.toLocaleString()}원</span>
                   </div>
                 ) : (
                   // 현재 입찰가 표시
@@ -543,7 +556,7 @@ export default function WebSocketAuctionDetailPage() {
                 </Link>
               ) : showBuyNowSuccess ? (
                 <BlurOverlay message="즉시 구매가 완료되었습니다." className="text-blue-600" />
-              ) : transaction && transaction.status === "COMPLETED" && transaction.userId !== user.info.id ? (
+              ) : auction.auctionLeftTime <= 0 || (transaction && transaction.userId !== user.info.id) ? (
                 <BlurOverlay message="종료된 경매입니다." className="text-gray-700" />
               ) : (
                 user.info.id === auction.userId && <BlurOverlay message="본인이 등록한 경매에는 입찰할 수 없습니다." />

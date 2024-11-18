@@ -23,6 +23,7 @@ import com.inhatc.auction.domain.auction.dto.response.AuctionDetailResponseDTO;
 import com.inhatc.auction.domain.auction.dto.response.AuctionResponseDTO;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
+import com.inhatc.auction.domain.auction.websocket.WebSocketHandler;
 import com.inhatc.auction.domain.bid.dto.response.BidResponseDTO;
 import com.inhatc.auction.domain.bid.repository.BidRepository;
 import com.inhatc.auction.domain.category.entity.Category;
@@ -59,6 +60,7 @@ public class AuctionService {
   private final TransactionRepository transactionRepository;
   private final SseService sseEmitterService;
   private final JwtTokenProvider jwtTokenProvider;
+  private final WebSocketHandler webSocketHandler;
 
   @Transactional
   public AuctionDetailResponseDTO getAuctionDetail(Long auctionId) {
@@ -78,6 +80,7 @@ public class AuctionService {
           .userId(transaction.getBuyer().getId())
           .nickname(transaction.getBuyer().getNickname())
           .status(transaction.getStatus())
+          .finalPrice(transaction.getFinalPrice())
           .build();
     }
 
@@ -343,9 +346,22 @@ public class AuctionService {
     for (Auction auction : endedAuctions) {
       auction.updateStatus(AuctionStatus.ENDED);
       auction.setSuccessfulPrice(auction.getCurrentPrice());
-      auctionRepository.save(auction);
+
+      // 최종 거래 내역 저장
+      Transaction transaction = Transaction.builder()
+          .auction(auction)
+          .seller(auction.getUser()) // 판매자
+          .buyer(auction.getBids().get(auction.getBids().size() - 1).getUser()) // 최종 낙찰자
+          .finalPrice(auction.getSuccessfulPrice())
+          .status(TransactionStatus.COMPLETED)
+          .build();
+
+      this.transactionRepository.save(transaction);
+      this.auctionRepository.save(auction);
       log.info("경매 ID: {} 종료됨", auction.getId());
+
+      // 해당 경매를 조회하고있는 사용자들에게 경매 종료 알림 (WebSocket)
+      this.webSocketHandler.broadcastEnded(auction);
     }
   }
-
 }
