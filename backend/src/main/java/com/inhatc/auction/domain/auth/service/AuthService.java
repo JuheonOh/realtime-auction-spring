@@ -121,7 +121,7 @@ public class AuthService {
                 }
             }
         } catch (ExpiredJwtException e) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다.");
         }
     }
 
@@ -143,7 +143,7 @@ public class AuthService {
                 return newAccessToken;
             }
         } catch (ExpiredJwtException e) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다.");
         }
 
         return null;

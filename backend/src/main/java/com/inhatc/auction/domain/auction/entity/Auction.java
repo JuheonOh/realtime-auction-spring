@@ -107,5 +107,4 @@ public class Auction extends BaseTimeEntity {
     public void extendEndTime(Duration downtime) {
         this.auctionEndTime = this.auctionEndTime.plus(downtime);
     }
-
 }

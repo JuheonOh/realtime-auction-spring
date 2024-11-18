@@ -69,7 +69,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         String accessToken = request.getAccessToken();
 
         if (accessToken == null) {
-            sendErrorMessage(session, HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+            sendErrorMessage(session, "error", HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
             return;
         }
 
@@ -78,10 +78,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 return;
             }
         } catch (ExpiredJwtException e) {
-            sendErrorMessage(session, HttpStatus.FORBIDDEN, "토큰이 만료되었습니다.");
+            sendErrorMessage(session, "token_expired", HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다.");
             return;
         } catch (Exception e) {
-            sendErrorMessage(session, HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
+            sendErrorMessage(session, "error", HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
             return;
         }
 
@@ -91,27 +91,27 @@ public class WebSocketHandler extends TextWebSocketHandler {
         // 사용자 조회
         User user = userRepository.findById(userId).orElse(null);
         if (user == null) {
-            sendErrorMessage(session, HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.");
+            sendErrorMessage(session, "error", HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.");
             return;
         }
 
         // 경매 조회
         Auction auction = auctionRepository.findById(auctionId).orElse(null);
         if (auction == null) {
-            sendErrorMessage(session, HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다.");
+            sendErrorMessage(session, "error", HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다.");
             return;
         }
 
         // 현재 경매가 종료된 경우
         if (auction.getAuctionEndTime().isBefore(LocalDateTime.now())) {
-            sendErrorMessage(session, HttpStatus.BAD_REQUEST, "종료된 경매에는 입찰할 수 없습니다.");
+            sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "종료된 경매에는 입찰할 수 없습니다.");
             return;
         }
 
         if (type.equals("bid")) {
             // 입찰하려는 경매가 내가 등록한 경매인 경우
             if (auction.getUser().getId() == user.getId()) {
-                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 입찰할 수 없습니다.");
+                sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 입찰할 수 없습니다.");
                 return;
             }
 
@@ -124,20 +124,20 @@ public class WebSocketHandler extends TextWebSocketHandler {
             // 현재 최고입찰자가 본인인 경우 입찰할 수 없음
             Long currentHighestBidUserId = this.bidRepository.findCurrentHighestBidUserId(auctionId).orElse(null);
             if (currentHighestBidUserId != null && currentHighestBidUserId == user.getId()) {
-                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "현재 고객님이 최고입찰자입니다.");
+                sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "현재 고객님이 최고입찰자입니다.");
                 return;
             }
 
             // 첫 입찰의 경우 시작가와 같거나 높아야 함
             if (isFirstBid) {
                 if (bidAmount < auction.getStartPrice()) {
-                    sendErrorMessage(session, HttpStatus.BAD_REQUEST, "입찰 금액이 시작가와 같거나 높아야 합니다");
+                    sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "입찰 금액이 시작가와 같거나 높아야 합니다");
                     return;
                 }
             } else {
                 // 첫 입찰이 아닌 경우 현재 경매 가격보다 높아야 함
                 if (bidAmount <= auction.getCurrentPrice()) {
-                    sendErrorMessage(session, HttpStatus.BAD_REQUEST, "입찰 금액을 현재 경매 가격보다 높게 입력해주세요.");
+                    sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "입찰 금액을 현재 경매 가격보다 높게 입력해주세요.");
                     return;
                 }
             }
@@ -195,18 +195,18 @@ public class WebSocketHandler extends TextWebSocketHandler {
         } else if (type.equals("buy-now")) {
             // 즉시 구매가 가능한 경매인지 확인
             if (auction.getBuyNowPrice() == 0) {
-                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "즉시 구매가 가능한 경매가 아닙니다.");
+                sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "즉시 구매가 가능한 경매가 아닙니다.");
                 return;
             }
 
             // 즉시 구매하려는 경매가 내가 등록한 경매인 경우
             if (auction.getUser().getId() == user.getId()) {
-                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 즉시 구매할 수 없습니다.");
+                sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 즉시 구매할 수 없습니다.");
                 return;
             }
 
             if (auction.getAuctionEndTime().isBefore(LocalDateTime.now())) {
-                sendErrorMessage(session, HttpStatus.BAD_REQUEST, "종료된 경매에는 즉시 구매할 수 없습니다.");
+                sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "종료된 경매에는 즉시 구매할 수 없습니다.");
                 return;
             }
 
@@ -326,13 +326,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
     }
 
     // 오류 메시지 전송
-    private void sendErrorMessage(WebSocketSession session, HttpStatus status, String message) throws IOException {
+    private void sendErrorMessage(WebSocketSession session, String type, HttpStatus status, String message)
+            throws IOException {
         WebSocketResponseDTO.Message msg = WebSocketResponseDTO.Message.builder()
                 .message(message)
                 .build();
 
         WebSocketResponseDTO response = WebSocketResponseDTO.builder()
-                .type("error")
+                .type(type)
                 .status(status.value())
                 .data(msg)
                 .build();

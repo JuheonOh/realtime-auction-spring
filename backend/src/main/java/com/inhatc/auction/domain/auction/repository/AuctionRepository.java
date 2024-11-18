@@ -19,10 +19,12 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
 
     // 특정 경매 조회
     @NonNull
-    Optional<Auction> findById(@NonNull Long auctionId);
+    @Query("SELECT a FROM Auction a WHERE a.id = :auctionId")
+    Optional<Auction> findById(@NonNull @Param("auctionId") Long auctionId);
 
     // 모든 경매 조회
     @NonNull
+    @Query("SELECT a FROM Auction a ORDER BY a.auctionStartTime DESC")
     List<Auction> findAll();
 
     // 남은 시간 계산
@@ -42,5 +44,9 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     List<Auction> findAuctionsForDowntimeCompensation(
             @Param("status") AuctionStatus status,
             @Param("serverStopTime") LocalDateTime serverStopTime);
+
+    // 종료된 경매 조회
+    List<Auction> findByAuctionEndTimeBeforeAndStatus(@Param("auctionEndTime") LocalDateTime auctionEndTime,
+            @Param("status") AuctionStatus status);
 
 }

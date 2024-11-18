@@ -59,7 +59,7 @@ export const refreshAccessToken = async () => {
 
     return newAccessToken;
   } catch (error) {
-    if (error.response.status === 403) {
+    if (error.response.status === 401) {
       clearCookie();
       window.location.replace("/auth/login");
     }

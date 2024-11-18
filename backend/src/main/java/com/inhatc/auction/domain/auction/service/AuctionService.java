@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -329,6 +330,22 @@ public class AuctionService {
         .build();
 
     this.sseEmitterService.broadcastBuyNow(auctionId, sseBuyNowResponseDTO);
+  }
+
+  // 매 분마다 종료된 경매 업데이트
+  @Scheduled(fixedRate = 60000)
+  @Transactional
+  public void updateEndedAuctions() {
+    LocalDateTime now = LocalDateTime.now();
+    List<Auction> endedAuctions = auctionRepository.findByAuctionEndTimeBeforeAndStatus(now,
+        AuctionStatus.ACTIVE);
+
+    for (Auction auction : endedAuctions) {
+      auction.updateStatus(AuctionStatus.ENDED);
+      auction.setSuccessfulPrice(auction.getCurrentPrice());
+      auctionRepository.save(auction);
+      log.info("경매 ID: {} 종료됨", auction.getId());
+    }
   }
 
 }

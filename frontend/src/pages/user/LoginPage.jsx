@@ -1,9 +1,9 @@
 import { login } from "@apis/AuthAPI";
 import InValidAlert from "@components/common/alerts/InValidAlert";
-import { SET_ACCESS_TOKEN } from "@data/redux/store/User";
+import { RESET_USER, SET_ACCESS_TOKEN } from "@data/redux/store/User";
 import { setCookie } from "@data/storage/Cookie";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -12,6 +12,11 @@ export default function LoginPage() {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // user 리셋
+    dispatch(RESET_USER());
+  }, [dispatch]);
 
   const [formData, setFormData] = useState({
     email: "",
