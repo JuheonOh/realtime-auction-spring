@@ -5,12 +5,10 @@ import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.inhatc.auction.domain.auction.entity.Auction;
-import com.inhatc.auction.domain.auth.entity.Auth;
 import com.inhatc.auction.domain.bid.entity.Bid;
 import com.inhatc.auction.global.constant.Role;
 import com.inhatc.auction.global.entity.BaseTimeEntity;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,7 +18,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Builder;
 import lombok.Getter;
@@ -61,8 +58,9 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.REMOVE)
-    private Auth auth;
+    // @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade =
+    // CascadeType.REMOVE)
+    // private Auth auth;
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Auction> auctions;

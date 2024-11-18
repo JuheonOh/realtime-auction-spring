@@ -1,52 +1,30 @@
 package com.inhatc.auction.domain.auth.entity;
 
-import com.inhatc.auction.domain.user.entity.User;
-import com.inhatc.auction.global.entity.BaseTimeEntity;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.redis.core.RedisHash;
+import org.springframework.data.redis.core.index.Indexed;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Entity
-@Table(name = "auth")
+@RedisHash(value = "auth")
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Auth extends BaseTimeEntity {
+@Builder
+public class Auth {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long id; // userId를 key로 사용
 
     private String tokenType;
 
-    @Column(columnDefinition = "TEXT")
+    @Indexed
     private String accessToken;
 
-    @Column(columnDefinition = "TEXT")
+    @Indexed
     private String refreshToken;
-
-    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @Builder
-    public Auth(String tokenType, String accessToken, String refreshToken, User user) {
-        this.tokenType = tokenType;
-        this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
-        this.user = user;
-    }
 
     public void updateAccessToken(String accessToken) {
         this.accessToken = accessToken;

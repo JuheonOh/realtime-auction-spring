@@ -12,7 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.inhatc.auction.domain.auth.dto.request.AuthRequestDTO;
 import com.inhatc.auction.domain.auth.dto.response.AuthResponseDTO;
 import com.inhatc.auction.domain.auth.entity.Auth;
-import com.inhatc.auction.domain.auth.repository.AuthRepository;
+import com.inhatc.auction.domain.auth.repository.AuthRedisRepository;
 import com.inhatc.auction.domain.user.dto.request.UserRequestDTO;
 import com.inhatc.auction.domain.user.entity.CustomUserDetails;
 import com.inhatc.auction.domain.user.entity.User;
@@ -31,9 +31,9 @@ import lombok.extern.log4j.Log4j2;
 @RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
-    private final AuthRepository authRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final AuthRedisRepository authRedisRepository;
 
     /**
      * 로그인
@@ -60,22 +60,19 @@ public class AuthService {
         String refreshToken = this.jwtTokenProvider.generateRefreshToken(
                 new UsernamePasswordAuthenticationToken(new CustomUserDetails(user), user.getPassword()));
 
-        // 이미 존재하는 Auth 엔티티가 있는 경우, 업데이트
-        if (this.authRepository.existsByUser(user)) {
-            user.getAuth().updateAccessToken(accessToken);
-            user.getAuth().updateRefreshToken(refreshToken);
-            return new AuthResponseDTO(user.getAuth());
-        }
+        // 기존 토큰이 있다면 삭제
+        this.authRedisRepository.findById(user.getId())
+                .ifPresent(auth -> this.authRedisRepository.deleteById(auth.getId()));
 
-        // 존재하지 않는 Auth 엔티티인 경우, Auth 엔티티 및 토큰 저장
+        // 새로운 토큰 저장
         Auth auth = Auth.builder()
-                .user(user)
+                .id(user.getId())
                 .tokenType(SecurityConstants.TOKEN_TYPE.strip())
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .build();
 
-        this.authRepository.save(auth);
+        this.authRedisRepository.save(auth);
 
         return new AuthResponseDTO(auth);
     }
@@ -114,11 +111,8 @@ public class AuthService {
     public void logout(String refreshToken) {
         try {
             if (this.jwtTokenProvider.validateToken(refreshToken)) {
-                Auth auth = this.authRepository.findByRefreshToken(refreshToken).orElse(null);
-
-                if (auth != null) {
-                    this.authRepository.delete(auth);
-                }
+                this.authRedisRepository.findByRefreshToken(refreshToken)
+                        .ifPresent(auth -> this.authRedisRepository.deleteById(auth.getId()));
             }
         } catch (ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다.");
@@ -133,13 +127,20 @@ public class AuthService {
         // REFRESH_TOKEN 만료 확인 및 ACCESS_TOKEN 갱신
         try {
             if (this.jwtTokenProvider.validateToken(refreshToken)) {
-                Auth auth = this.authRepository.findByRefreshToken(refreshToken).orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다. (REFRESH_TOKEN)"));
+                Auth auth = this.authRedisRepository.findByRefreshToken(refreshToken)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.UNAUTHORIZED, "로그인이 필요합니다. (REFRESH_TOKEN)"));
+
+                User user = this.userRepository.findById(Long.valueOf(auth.getId()))
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
                 String newAccessToken = this.jwtTokenProvider.generateAccessToken(
                         new UsernamePasswordAuthenticationToken(
-                                new CustomUserDetails(auth.getUser()), auth.getUser().getPassword()));
+                                new CustomUserDetails(user), user.getPassword()));
+
                 auth.updateAccessToken(newAccessToken);
+                this.authRedisRepository.save(auth);
                 return newAccessToken;
             }
         } catch (ExpiredJwtException e) {
