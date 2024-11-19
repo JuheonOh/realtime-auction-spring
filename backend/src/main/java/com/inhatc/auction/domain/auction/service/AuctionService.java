@@ -25,11 +25,12 @@ import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.auction.websocket.WebSocketHandler;
 import com.inhatc.auction.domain.bid.dto.response.BidResponseDTO;
-import com.inhatc.auction.domain.bid.repository.BidRepository;
 import com.inhatc.auction.domain.category.entity.Category;
 import com.inhatc.auction.domain.category.repository.CategoryRepository;
 import com.inhatc.auction.domain.image.dto.response.ImageResponseDTO;
 import com.inhatc.auction.domain.image.entity.Image;
+import com.inhatc.auction.domain.redisBid.entity.RedisBid;
+import com.inhatc.auction.domain.redisBid.repository.RedisBidRepository;
 import com.inhatc.auction.domain.sse.dto.response.SseTransactionResponseDTO;
 import com.inhatc.auction.domain.sse.service.SseService;
 import com.inhatc.auction.domain.transaction.dto.response.TransactionResponseDTO;
@@ -56,18 +57,23 @@ public class AuctionService {
   private final UserRepository userRepository;
   private final AuctionRepository auctionRepository;
   private final CategoryRepository categoryRepository;
-  private final BidRepository bidRepository;
+  // private final BidRepository bidRepository;
   private final TransactionRepository transactionRepository;
   private final SseService sseEmitterService;
   private final JwtTokenProvider jwtTokenProvider;
   private final WebSocketHandler webSocketHandler;
+  private final RedisBidRepository redisBidRepository;
 
   @Transactional
   public AuctionDetailResponseDTO getAuctionDetail(Long auctionId) {
     Auction auction = this.auctionRepository.findById(auctionId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
             "경매를 찾을 수 없습니다"));
-    Long bidCount = this.bidRepository.findBidCountByAuctionId(auctionId).orElse(0L);
+
+    // Redis에서 입찰 내역 조회
+    List<RedisBid> redisBids = redisBidRepository.findByAuctionIdOrderByBidTimeAsc(auctionId);
+    Long bidCount = (long) redisBids.size();
+
     Long watchCount = 0L;
     Long auctionLeftTime = Math.max(0,
         Duration.between(LocalDateTime.now(), auction.getAuctionEndTime()).toSeconds());
@@ -91,14 +97,22 @@ public class AuctionService {
             .build())
         .collect(Collectors.toList());
 
-    List<BidResponseDTO> bidList = auction.getBids().stream()
-        .map(bid -> BidResponseDTO.builder()
-            .id(bid.getId())
-            .userId(bid.getUser().getId())
-            .nickname(bid.getUser().getNickname())
-            .bidAmount(bid.getBidAmount())
-            .createdAt(bid.getCreatedAt())
-            .build())
+    // Redis 입찰 내역을 DTO로 변환
+    List<BidResponseDTO> bidList = redisBids.stream()
+        .map((RedisBid bid) -> {
+          User bidder = userRepository.findById(bid.getUserId())
+              .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                  "입찰자 정보를 찾을 수 없습니다."));
+
+          LocalDateTime createdAt = bid.getBidTime();
+
+          return BidResponseDTO.builder()
+              .userId(bid.getUserId())
+              .nickname(bidder.getNickname())
+              .bidAmount(bid.getBidAmount())
+              .createdAt(createdAt)
+              .build();
+        })
         .collect(Collectors.toList());
 
     return AuctionDetailResponseDTO.builder()
@@ -287,7 +301,7 @@ public class AuctionService {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
     }
 
-    // 토큰에서 사용자 ID 추출
+    // 토큰에서 사용자 ID 출
     Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
 
     // 사용자 조회
@@ -304,11 +318,11 @@ public class AuctionService {
     }
 
     // 즉시 구매하려는 경매가 내가 등록한 경매인 경우
-    if (auction.getUser().getId() == user.getId()) {
+    if (auction.getUser().getId().equals(user.getId())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 즉시 구매할 수 없습니다.");
     }
 
-    // 경매 (종료 시간, 최종 낙찰가, 상태) 업데이트
+    // 매 (종료 시간, 최종 낙찰가, 상태) 업데이트
     auction.updateAuctionEndTime(LocalDateTime.now());
     auction.setSuccessfulPrice(auction.getBuyNowPrice());
     auction.updateStatus(AuctionStatus.ENDED);
@@ -340,28 +354,41 @@ public class AuctionService {
   @Transactional
   public void updateEndedAuctions() {
     LocalDateTime now = LocalDateTime.now();
-    List<Auction> endedAuctions = auctionRepository.findByAuctionEndTimeBeforeAndStatus(now,
-        AuctionStatus.ACTIVE);
+    List<Auction> endedAuctions = auctionRepository.findByAuctionEndTimeBeforeAndStatus(now, AuctionStatus.ACTIVE);
 
     for (Auction auction : endedAuctions) {
-      auction.updateStatus(AuctionStatus.ENDED);
-      auction.setSuccessfulPrice(auction.getCurrentPrice());
+      // Redis에서 최종 입찰 내역 조회
+      RedisBid finalBid = redisBidRepository.findFirstByAuctionIdOrderByBidTimeDesc(auction.getId())
+          .orElse(null);
 
-      // 최종 거래 내역 저장
-      Transaction transaction = Transaction.builder()
-          .auction(auction)
-          .seller(auction.getUser()) // 판매자
-          .buyer(auction.getBids().get(auction.getBids().size() - 1).getUser()) // 최종 낙찰자
-          .finalPrice(auction.getSuccessfulPrice())
-          .status(TransactionStatus.COMPLETED)
-          .build();
+      if (finalBid != null) { // 입찰 내역이 있는 경우
+        User buyer = userRepository.findById(finalBid.getUserId())
+            .orElseThrow(() -> new IllegalStateException("최종 입찰자를 찾을 수 없습니다."));
 
-      this.transactionRepository.save(transaction);
-      this.auctionRepository.save(auction);
-      log.info("경매 ID: {} 종료됨", auction.getId());
+        auction.updateStatus(AuctionStatus.ENDED);
+        auction.setSuccessfulPrice(finalBid.getBidAmount());
 
-      // 해당 경매를 조회하고있는 사용자들에게 경매 종료 알림 (WebSocket)
-      this.webSocketHandler.broadcastEnded(auction);
+        // 최종 거래 내역 저장
+        Transaction transaction = Transaction.builder()
+            .auction(auction)
+            .seller(auction.getUser())
+            .buyer(buyer)
+            .finalPrice(finalBid.getBidAmount())
+            .status(TransactionStatus.COMPLETED)
+            .build();
+
+        this.transactionRepository.save(transaction);
+        this.auctionRepository.save(auction);
+        log.info("경매 ID: {} 종료됨", auction.getId());
+
+        // WebSocket 통해 경매 종료 알림
+        this.webSocketHandler.broadcastEnded(auction);
+
+      } else { // 입찰 내역이 없는 경우
+        auction.updateStatus(AuctionStatus.ENDED);
+        auction.setSuccessfulPrice(0L);
+        this.auctionRepository.save(auction);
+      }
     }
   }
 }

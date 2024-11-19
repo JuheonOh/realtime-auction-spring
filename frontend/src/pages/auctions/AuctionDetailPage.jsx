@@ -30,7 +30,7 @@ const bidUnit = (currentPrice) => {
   else return 100000;
 };
 
-export default function WebSocketAuctionDetailPage() {
+export default function AuctionDetailPage() {
   const auctionId = useParams().auctionId;
 
   const dispatch = useDispatch();
@@ -128,7 +128,7 @@ export default function WebSocketAuctionDetailPage() {
           socketRef.current.close();
         }
 
-        socketRef.current = new WebSocket(`${WS_BASE_URL}/api/auctions/${auctionId}/ws`);
+        socketRef.current = new WebSocket(`${WS_BASE_URL}/ws/auctions/${auctionId}`);
 
         socketRef.current.onopen = (e) => {
           console.log("경매 입찰 소켓 연결 성공");
@@ -253,13 +253,14 @@ export default function WebSocketAuctionDetailPage() {
           userId: buyNowData.userId,
           nickname: buyNowData.nickname,
           status: buyNowData.status,
+          finalPrice: buyNowData.buyNowPrice,
         }));
 
         setAuction((prev) => ({
           ...prev,
           status: "ENDED",
           auctionLeftTime: 0,
-          successfulPrice: prev.buyNowPrice,
+          successfulPrice: buyNowData.buyNowPrice,
         }));
       }
 
@@ -272,7 +273,7 @@ export default function WebSocketAuctionDetailPage() {
           userId: transactionData.userId,
           nickname: transactionData.nickname,
           status: transactionData.status,
-          finalPrice: transactionData.successfulPrice,
+          finalPrice: transactionData.finalPrice,
         }));
       }
     };
@@ -297,7 +298,7 @@ export default function WebSocketAuctionDetailPage() {
     if (!auction?.startPrice || !auction?.currentPrice) return;
 
     // 첫 입찰자인 경우 시작가로 설정, 아니면 현재가 + 입찰단위
-    setBidAmount(bidData.length === 0 ? auction.startPrice : auction.currentPrice + bidUnit(auction.currentPrice));
+    setBidAmount(bidData.length === 0 ? auction.currentPrice : auction.currentPrice + bidUnit(auction.currentPrice));
   }, [auction?.startPrice, auction?.currentPrice, bidData.length]);
 
   // 즉시 구매 성공 시 초기화

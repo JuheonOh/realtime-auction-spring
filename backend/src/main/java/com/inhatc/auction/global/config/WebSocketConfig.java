@@ -18,6 +18,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(@NonNull WebSocketHandlerRegistry registry) {
-        registry.addHandler(webSocketHandler, "/api/auctions/{auctionId}/ws").setAllowedOrigins("*");
+        registry.addHandler(webSocketHandler, "/ws/auctions/{auctionId}").setAllowedOrigins("*");
     }
 }

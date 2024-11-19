@@ -21,7 +21,6 @@ public class WebSocketResponseDTO {
     @Getter
     @Builder
     public static class BidData {
-        private Long id;
         private Long userId;
         private String nickname;
         private Long bidAmount;
@@ -42,6 +41,7 @@ public class WebSocketResponseDTO {
         private Long userId;
         private String nickname;
         private String status;
+        private Long buyNowPrice;
     }
 
     @Getter
@@ -57,7 +57,7 @@ public class WebSocketResponseDTO {
         private Long userId;
         private String nickname;
         private TransactionStatus status;
-        private Long successfulPrice;
+        private Long finalPrice;
     }
 
     @Getter

@@ -8,6 +8,6 @@ import org.springframework.stereotype.Repository;
 import com.inhatc.auction.domain.auth.entity.Auth;
 
 @Repository
-public interface AuthRedisRepository extends CrudRepository<Auth, Long> {
+public interface AuthRedisRepository extends CrudRepository<Auth, String> {
     Optional<Auth> findByRefreshToken(String refreshToken);
 }

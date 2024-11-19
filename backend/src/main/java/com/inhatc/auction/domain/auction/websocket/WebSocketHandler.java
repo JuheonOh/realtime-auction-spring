@@ -22,8 +22,9 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
-import com.inhatc.auction.domain.bid.entity.Bid;
 import com.inhatc.auction.domain.bid.repository.BidRepository;
+import com.inhatc.auction.domain.redisBid.entity.RedisBid;
+import com.inhatc.auction.domain.redisBid.repository.RedisBidRepository;
 import com.inhatc.auction.domain.transaction.entity.Transaction;
 import com.inhatc.auction.domain.transaction.repository.TransactionRepository;
 import com.inhatc.auction.domain.user.entity.User;
@@ -44,6 +45,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final UserRepository userRepository;
     private final AuctionRepository auctionRepository;
     private final BidRepository bidRepository;
+    private final RedisBidRepository redisBidRepository;
     private final TransactionRepository transactionRepository;
 
     private final Map<Long, Set<WebSocketSession>> auctionRooms = new ConcurrentHashMap<>();
@@ -110,20 +112,22 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
         if (type.equals("bid")) {
             // 입찰하려는 경매가 내가 등록한 경매인 경우
-            if (auction.getUser().getId() == user.getId()) {
+            if (auction.getUser().getId().equals(user.getId())) {
                 sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 입찰할 수 없습니다.");
                 return;
             }
 
             // 입찰 금액 (String -> Long)
-            Long bidAmount = Long.parseLong(data.get("bidAmount"));
+            Long bidAmount = Long.valueOf(data.get("bidAmount"));
 
             // 입찰 횟수 조회
-            Boolean isFirstBid = bidRepository.findBidCountByAuctionId(auctionId).orElse(null) == 0;
+            // Boolean isFirstBid =
+            // bidRepository.findBidCountByAuctionId(auctionId).orElse(null) == 0;
+            Boolean isFirstBid = redisBidRepository.findFirstByAuctionIdOrderByBidTimeDesc(auctionId).isEmpty();
 
             // 현재 최고입찰자가 본인인 경우 입찰할 수 없음
             Long currentHighestBidUserId = this.bidRepository.findCurrentHighestBidUserId(auctionId).orElse(null);
-            if (currentHighestBidUserId != null && currentHighestBidUserId == user.getId()) {
+            if (currentHighestBidUserId != null && currentHighestBidUserId.equals(user.getId())) {
                 sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "현재 고객님이 최고입찰자입니다.");
                 return;
             }
@@ -143,13 +147,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
             }
 
             // 입찰 저장
-            Bid bid = Bid.builder()
-                    .auction(auction)
-                    .user(user)
+            RedisBid newBid = RedisBid.builder()
+                    .auctionId(auctionId)
+                    .userId(userId)
                     .bidAmount(bidAmount)
                     .build();
 
-            bidRepository.save(bid);
+            redisBidRepository.save(newBid);
 
             // 현재 경매 가격 업데이트
             auction.updateCurrentPrice(bidAmount);
@@ -161,11 +165,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
             // 입찰 데이터
             WebSocketResponseDTO.BidData bidData = WebSocketResponseDTO.BidData.builder()
-                    .id(bid.getId())
-                    .userId(bid.getUser().getId())
-                    .nickname(bid.getUser().getNickname())
-                    .bidAmount(bid.getBidAmount())
-                    .createdAt(bid.getCreatedAt().toString())
+                    .userId(newBid.getUserId())
+                    .nickname(user.getNickname())
+                    .bidAmount(newBid.getBidAmount())
+                    .createdAt(newBid.getBidTime().toString())
                     .auctionLeftTime(auctionLeftTime)
                     .build();
 
@@ -200,7 +203,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
             }
 
             // 즉시 구매하려는 경매가 내가 등록한 경매인 경우
-            if (auction.getUser().getId() == user.getId()) {
+            if (auction.getUser().getId().equals(user.getId())) {
                 sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 즉시 구매할 수 없습니다.");
                 return;
             }
@@ -232,6 +235,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     .userId(user.getId())
                     .nickname(user.getNickname())
                     .status(TransactionStatus.COMPLETED.toString())
+                    .buyNowPrice(auction.getBuyNowPrice())
                     .build();
 
             // 메시지 + 즉시 구매 데이터
@@ -268,7 +272,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 .userId(highestBidder.getId())
                 .nickname(highestBidder.getNickname())
                 .status(TransactionStatus.COMPLETED)
-                .successfulPrice(auction.getSuccessfulPrice())
+                .finalPrice(auction.getSuccessfulPrice())
                 .build();
 
         WebSocketResponseDTO.TransactionResponse transactionResponse = WebSocketResponseDTO.TransactionResponse
@@ -354,7 +358,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         try {
-            return Long.parseLong(pathParts[3]); // /api/auctions/{auctionId}/ws
+            return Long.valueOf(pathParts[3]); // localhost:8080/ws/auctions/{auctionId}
         } catch (NumberFormatException e) {
             throw new IllegalStateException("경매 ID가 유효한 숫자가 아닙니다: " + pathParts[3]);
         }
