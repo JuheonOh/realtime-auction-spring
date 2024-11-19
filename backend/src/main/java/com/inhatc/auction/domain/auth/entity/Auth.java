@@ -2,35 +2,23 @@ package com.inhatc.auction.domain.auth.entity;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.redis.core.RedisHash;
-import org.springframework.data.redis.core.index.Indexed;
+import org.springframework.data.redis.core.TimeToLive;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@RedisHash(value = "auth")
 @Getter
-@NoArgsConstructor
-@AllArgsConstructor
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@RedisHash(value = "auth")
 public class Auth {
     @Id
-    private Long id; // userId를 key로 사용
-
-    private String tokenType;
-
-    @Indexed
-    private String accessToken;
-
-    @Indexed
     private String refreshToken;
+    private Long userId;
 
-    public void updateAccessToken(String accessToken) {
-        this.accessToken = accessToken;
-    }
-
-    public void updateRefreshToken(String refreshToken) {
-        this.refreshToken = refreshToken;
-    }
+    @TimeToLive
+    private long ttl;
 }

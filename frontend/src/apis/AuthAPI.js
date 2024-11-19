@@ -1,6 +1,6 @@
-import axios from "axios";
 import { getCookie } from "@data/storage/Cookie";
 import { API_BASE_URL } from "@utils/constant";
+import axios from "axios";
 
 export const AuthApi = axios.create({
   baseURL: API_BASE_URL,

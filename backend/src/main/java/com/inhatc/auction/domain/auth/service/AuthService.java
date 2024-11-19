@@ -54,27 +54,35 @@ public class AuthService {
             throw new CustomResponseStatusException(HttpStatus.UNAUTHORIZED, errors);
         }
 
-        // 액세스 토큰 및 리프레시 토큰 생성
+        // 액세스 토큰 생성
         String accessToken = this.jwtTokenProvider.generateAccessToken(
                 new UsernamePasswordAuthenticationToken(new CustomUserDetails(user), user.getPassword()));
+
+        // 리프레시 토큰 생성
         String refreshToken = this.jwtTokenProvider.generateRefreshToken(
                 new UsernamePasswordAuthenticationToken(new CustomUserDetails(user), user.getPassword()));
 
         // 기존 토큰이 있다면 삭제
-        this.authRedisRepository.findById(user.getId())
-                .ifPresent(auth -> this.authRedisRepository.deleteById(auth.getId()));
+        this.authRedisRepository.findByRefreshToken(refreshToken)
+                .ifPresent(auth -> this.authRedisRepository.delete(auth));
+
+        // 리프레시 토큰 만료 시간
+        Long ttl = this.jwtTokenProvider.getJwtRefreshTokenExpirationTime() / 1000;
 
         // 새로운 토큰 저장
         Auth auth = Auth.builder()
-                .id(user.getId())
-                .tokenType(SecurityConstants.TOKEN_TYPE.strip())
-                .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .userId(user.getId())
+                .ttl(ttl)
                 .build();
 
         this.authRedisRepository.save(auth);
 
-        return new AuthResponseDTO(auth);
+        return AuthResponseDTO.builder()
+                .tokenType(SecurityConstants.TOKEN_TYPE.strip())
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
     /**
@@ -110,10 +118,8 @@ public class AuthService {
     @Transactional
     public void logout(String refreshToken) {
         try {
-            if (this.jwtTokenProvider.validateToken(refreshToken)) {
-                this.authRedisRepository.findByRefreshToken(refreshToken)
-                        .ifPresent(auth -> this.authRedisRepository.deleteById(auth.getId()));
-            }
+            this.authRedisRepository.findByRefreshToken(refreshToken)
+                    .ifPresent(auth -> this.authRedisRepository.delete(auth));
         } catch (ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다.");
         }
@@ -131,7 +137,7 @@ public class AuthService {
                         .orElseThrow(() -> new ResponseStatusException(
                                 HttpStatus.UNAUTHORIZED, "로그인이 필요합니다. (REFRESH_TOKEN)"));
 
-                User user = this.userRepository.findById(Long.valueOf(auth.getId()))
+                User user = this.userRepository.findById(auth.getUserId())
                         .orElseThrow(() -> new ResponseStatusException(
                                 HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 
@@ -139,8 +145,6 @@ public class AuthService {
                         new UsernamePasswordAuthenticationToken(
                                 new CustomUserDetails(user), user.getPassword()));
 
-                auth.updateAccessToken(newAccessToken);
-                this.authRedisRepository.save(auth);
                 return newAccessToken;
             }
         } catch (ExpiredJwtException e) {

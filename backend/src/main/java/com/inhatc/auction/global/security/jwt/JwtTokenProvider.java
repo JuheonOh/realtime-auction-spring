@@ -28,11 +28,11 @@ import lombok.extern.log4j.Log4j2;
 public class JwtTokenProvider {
     private SecretKey jwtSecretKey;
 
-    @Value("${jwt.secret}")
+    @Value("${spring.jwt.secret}")
     private String secret;
-    @Value("${jwt.accessTokenExpirationTime}")
+    @Value("${spring.jwt.access-token-expiration-time}")
     private Long jwtAccessTokenExpirationTime;
-    @Value("${jwt.refreshTokenExpirationTime}")
+    @Value("${spring.jwt.refresh-token-expiration-time}")
     private Long jwtRefreshTokenExpirationTime;
 
     @PostConstruct
@@ -90,6 +90,10 @@ public class JwtTokenProvider {
 
     public Date getExpirationFromToken(String token) {
         return getClaims(token).getExpiration();
+    }
+
+    public long getJwtRefreshTokenExpirationTime() {
+        return jwtRefreshTokenExpirationTime;
     }
 
     public Claims getClaims(String token) {

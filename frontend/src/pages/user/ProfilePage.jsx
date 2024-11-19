@@ -23,8 +23,8 @@ export default function ProfilePage() {
     { id: 2, name: "Luxury Handbag", currentBid: 2500000, endDate: "2023-06-30" },
   ];
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     dispatch(LOGOUT());
     navigate("/");
   };
