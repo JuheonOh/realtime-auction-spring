@@ -2,9 +2,7 @@ package com.inhatc.auction.domain.redisBid.entity;
 
 import java.time.LocalDateTime;
 
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.index.Indexed;
 
@@ -27,13 +25,12 @@ public class RedisBid {
 
     @Indexed
     private Long userId;
+
+    @Indexed
     private Long bidAmount;
 
     private LocalDateTime bidTime;
 
-    @CreatedDate
     private LocalDateTime createdAt;
-
-    @LastModifiedDate
     private LocalDateTime updatedAt;
 }

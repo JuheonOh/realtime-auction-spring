@@ -30,38 +30,34 @@ public class BidMigrationService {
 
     @Transactional
     public void migrateAllBidsToRedis() {
-        log.info("입찰 데이터 마이그레이션 시작 (MariaDB -> Redis)");
+        log.info("입찰 데이터 마이그레이션 (MariaDB -> Redis)");
 
         List<Bid> allBids = bidRepository.findAll();
-        int count = 0;
-
         for (Bid bid : allBids) {
-            RedisBid redisBid = RedisBid.builder()
-                    .auctionId(bid.getAuction().getId())
-                    .userId(bid.getUser().getId())
-                    .bidAmount(bid.getBidAmount())
-                    .bidTime(bid.getBidTime())
-                    .build();
+            // Redis에 이미 존재하는지 확인
+            boolean exists = redisBidRepository.existsByAuctionIdAndUserIdAndBidAmount(
+                    bid.getAuction().getId(),
+                    bid.getUser().getId(),
+                    bid.getBidAmount());
 
-            redisBidRepository.save(redisBid);
-            count++;
+            if (!exists) {
+                RedisBid redisBid = RedisBid.builder()
+                        .auctionId(bid.getAuction().getId())
+                        .userId(bid.getUser().getId())
+                        .bidAmount(bid.getBidAmount())
+                        .bidTime(bid.getBidTime())
+                        .build();
 
-            if (count % 50 == 0) { // 로그 출력 간격 조절
-                log.info("{}개의 입찰 데이터 마이그레이션 완료", count);
+                redisBidRepository.save(redisBid);
             }
         }
-
-        log.info("전체 {}개의 입찰 데이터 마이그레이션 완료", count);
     }
 
     @Transactional
     public void migrateAllBidsToMariaDB() {
-        log.info("입찰 데이터 마이그레이션 시작 (Redis -> MariaDB)");
+        log.info("입찰 데이터 마이그레이션 (Redis -> MariaDB)");
 
         List<RedisBid> allBids = redisBidRepository.findAllByOrderByAuctionIdAscBidTimeAsc();
-        int count = 0;
-        int skipCount = 0;
-
         for (RedisBid redisBid : allBids) {
             // 이미 존재하는 입찰인지 확인
             boolean exists = bidRepository.existsByAuctionIdAndUserIdAndBidAmount(
@@ -83,19 +79,7 @@ public class BidMigrationService {
                         .build();
 
                 bidRepository.save(bid);
-                count++;
-
-                if (count % 50 == 0) {
-                    log.info("{}개의 입찰 데이터 마이그레이션 완료", count);
-                }
-            } else {
-                skipCount++;
-                if (skipCount % 50 == 0) {
-                    log.info("{}개의 중복 데이터 스킵", skipCount);
-                }
             }
         }
-
-        log.info("전체 {}개의 입찰 데이터 마이그레이션 완료 ({}개 중복 스킵)", count, skipCount);
     }
 }
