@@ -88,7 +88,7 @@ export default function AuctionDetailPage() {
         setTransaction(auctionDetail.data.transaction);
       }
 
-      const bids = auctionDetail.data.bids.map((data) => ({ ...data, createdAt: new Date(data.createdAt) }));
+      const bids = auctionDetail.data.bids.map((data) => ({ ...data, bidTime: new Date(data.bidTime) }));
       if (bids.length > 0) {
         setBidData(bids);
         setHighestBidderNickname(bids[bids.length - 1].nickname);
@@ -233,7 +233,7 @@ export default function AuctionDetailPage() {
             userId: bidData.userId, // 입찰자 id
             nickname: bidData.nickname, // 입찰자 닉네임
             bidAmount: bidData.bidAmount, // 입찰 금액
-            createdAt: new Date(bidData.createdAt), // 입찰 시간
+            bidTime: new Date(bidData.bidTime), // 입찰 시간
           },
         ]);
         setAuction((prev) => ({
@@ -275,6 +275,12 @@ export default function AuctionDetailPage() {
           status: transactionData.status,
           finalPrice: transactionData.finalPrice,
         }));
+      }
+
+      // error 데이터 받았을 때 (error)
+      if (type === "error") {
+        setInValid({ bidAmount: data.message });
+        setShowBidSuccess(false);
       }
     };
   }, [auctionId, user.accessToken, dispatch, bidAmount]);

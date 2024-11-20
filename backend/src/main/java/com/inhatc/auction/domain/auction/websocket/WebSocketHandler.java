@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +23,6 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
-import com.inhatc.auction.domain.bid.repository.BidRepository;
 import com.inhatc.auction.domain.redisBid.entity.RedisBid;
 import com.inhatc.auction.domain.redisBid.repository.RedisBidRepository;
 import com.inhatc.auction.domain.transaction.entity.Transaction;
@@ -44,7 +44,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final AuctionRepository auctionRepository;
-    private final BidRepository bidRepository;
     private final RedisBidRepository redisBidRepository;
     private final TransactionRepository transactionRepository;
 
@@ -120,17 +119,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
             // 입찰 금액 (String -> Long)
             Long bidAmount = Long.valueOf(data.get("bidAmount"));
 
-            // 입찰 횟수 조회
-            // Boolean isFirstBid =
-            // bidRepository.findBidCountByAuctionId(auctionId).orElse(null) == 0;
-            Boolean isFirstBid = redisBidRepository.findFirstByAuctionIdOrderByBidTimeDesc(auctionId).isEmpty();
-
-            // 현재 최고입찰자가 본인인 경우 입찰할 수 없음
-            Long currentHighestBidUserId = this.bidRepository.findCurrentHighestBidUserId(auctionId).orElse(null);
-            if (currentHighestBidUserId != null && currentHighestBidUserId.equals(user.getId())) {
-                sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "현재 고객님이 최고입찰자입니다.");
-                return;
-            }
+            // 최고 입찰자 조회
+            List<RedisBid> redisBids = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auctionId);
+            Boolean isFirstBid = redisBids.isEmpty();
 
             // 첫 입찰의 경우 시작가와 같거나 높아야 함
             if (isFirstBid) {
@@ -139,6 +130,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     return;
                 }
             } else {
+                // 현재 최고입찰자가 본인인 경우 입찰할 수 없음
+                RedisBid highestBid = redisBids.get(0);
+                if (highestBid.getUserId().equals(user.getId())) {
+                    sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "현재 고객님이 최고입찰자입니다.");
+                    return;
+                }
+
                 // 첫 입찰이 아닌 경우 현재 경매 가격보다 높아야 함
                 if (bidAmount <= auction.getCurrentPrice()) {
                     sendErrorMessage(session, "error", HttpStatus.BAD_REQUEST, "입찰 금액을 현재 경매 가격보다 높게 입력해주세요.");
@@ -151,6 +149,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     .auctionId(auctionId)
                     .userId(userId)
                     .bidAmount(bidAmount)
+                    .bidTime(LocalDateTime.now())
                     .build();
 
             redisBidRepository.save(newBid);
@@ -266,7 +265,31 @@ public class WebSocketHandler extends TextWebSocketHandler {
     // 경매 종료 알림 전송
     public void broadcastEnded(Auction auction) {
         Set<WebSocketSession> auctionRoom = auctionRooms.get(auction.getId());
-        User highestBidder = auction.getBids().get(auction.getBids().size() - 1).getUser();
+
+        // Redis에서 최고 입찰 정보 조회
+        List<RedisBid> highestBids = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
+
+        // 입찰 내역이 없는 경우 처리
+        if (highestBids.isEmpty()) {
+            WebSocketResponseDTO.TransactionResponse transactionResponse = WebSocketResponseDTO.TransactionResponse
+                    .builder()
+                    .message("입찰자가 없어 경매가 종료되었습니다.")
+                    .build();
+
+            WebSocketResponseDTO response = WebSocketResponseDTO.builder()
+                    .type("ended")
+                    .status(200)
+                    .data(transactionResponse)
+                    .build();
+
+            sendToAll(auctionRoom, response);
+            return;
+        }
+
+        // 최고 입찰자 정보 조회
+        RedisBid highestBid = highestBids.get(0);
+        User highestBidder = userRepository.findById(highestBid.getUserId())
+                .orElseThrow(() -> new IllegalStateException("최고 입찰자를 찾을 수 없습니다."));
 
         WebSocketResponseDTO.TransactionData transactionData = WebSocketResponseDTO.TransactionData.builder()
                 .userId(highestBidder.getId())
@@ -287,8 +310,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 .data(transactionResponse)
                 .build();
 
-        if (auctionRoom != null) {
-            for (WebSocketSession s : auctionRoom) {
+        sendToAll(auctionRoom, response);
+    }
+
+    // 모든 세션에 메시지 전송하는 헬퍼 메서드
+    private void sendToAll(Set<WebSocketSession> sessions, WebSocketResponseDTO response) {
+        if (sessions != null) {
+            for (WebSocketSession s : sessions) {
                 try {
                     s.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
                 } catch (IOException e) {

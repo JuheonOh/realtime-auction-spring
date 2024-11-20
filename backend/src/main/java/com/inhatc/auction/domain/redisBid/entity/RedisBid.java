@@ -1,19 +1,23 @@
 package com.inhatc.auction.domain.redisBid.entity;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.redis.core.RedisHash;
 import org.springframework.data.redis.core.index.Indexed;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@RedisHash(value = "auction_bid")
+@RedisHash(value = "bid")
 @Getter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class RedisBid {
     @Id
     private String id;
@@ -23,16 +27,13 @@ public class RedisBid {
 
     @Indexed
     private Long userId;
-
     private Long bidAmount;
+
     private LocalDateTime bidTime;
 
-    @Builder
-    public RedisBid(Long auctionId, Long userId, Long bidAmount) {
-        this.id = String.format("auction:%d:bid:%s", auctionId, UUID.randomUUID().toString());
-        this.auctionId = auctionId;
-        this.userId = userId;
-        this.bidAmount = bidAmount;
-        this.bidTime = LocalDateTime.now();
-    }
+    @CreatedDate
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
 }

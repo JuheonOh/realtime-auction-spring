@@ -24,6 +24,7 @@ public class ServerLifecycleService {
     private final ServerLifecycleRepository serverLifecycleRepository;
     private final AuctionRepository auctionRepository;
     private final FileUtils fileUtils;
+    // private final BidMigrationService bidMigrationService;
 
     @Transactional
     public void handleStartup() {
@@ -48,6 +49,9 @@ public class ServerLifecycleService {
             // 보상 처리 완료 메시지 로그
             log.info("경매 종료 시간 보상 처리 완료");
         }
+
+        // 입찰 데이터 마이그레이션
+        // bidMigrationService.migrateAllBidsToRedis();
     }
 
     @Transactional
@@ -61,6 +65,9 @@ public class ServerLifecycleService {
         } catch (Exception e) {
             log.error("데이터베이스에 서버 종료 시간 기록 실패", e);
         }
+
+        // 입찰 데이터 마이그레이션
+        // bidMigrationService.migrateAllBidsToMariaDB();
     }
 
     @Transactional

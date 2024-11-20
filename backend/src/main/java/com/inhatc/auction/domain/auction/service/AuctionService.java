@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -57,7 +58,6 @@ public class AuctionService {
   private final UserRepository userRepository;
   private final AuctionRepository auctionRepository;
   private final CategoryRepository categoryRepository;
-  // private final BidRepository bidRepository;
   private final TransactionRepository transactionRepository;
   private final SseService sseEmitterService;
   private final JwtTokenProvider jwtTokenProvider;
@@ -104,13 +104,11 @@ public class AuctionService {
               .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                   "입찰자 정보를 찾을 수 없습니다."));
 
-          LocalDateTime createdAt = bid.getBidTime();
-
           return BidResponseDTO.builder()
               .userId(bid.getUserId())
               .nickname(bidder.getNickname())
               .bidAmount(bid.getBidAmount())
-              .createdAt(createdAt)
+              .bidTime(bid.getBidTime())
               .build();
         })
         .collect(Collectors.toList());
@@ -358,22 +356,21 @@ public class AuctionService {
 
     for (Auction auction : endedAuctions) {
       // Redis에서 최종 입찰 내역 조회
-      RedisBid finalBid = redisBidRepository.findFirstByAuctionIdOrderByBidTimeDesc(auction.getId())
-          .orElse(null);
+      Optional<RedisBid> finalBid = redisBidRepository.findFirstByAuctionIdOrderByBidAmountDesc(auction.getId());
 
-      if (finalBid != null) { // 입찰 내역이 있는 경우
-        User buyer = userRepository.findById(finalBid.getUserId())
+      if (finalBid.isPresent()) { // 입찰 내역이 있는 경우
+        User buyer = userRepository.findById(finalBid.get().getUserId())
             .orElseThrow(() -> new IllegalStateException("최종 입찰자를 찾을 수 없습니다."));
 
         auction.updateStatus(AuctionStatus.ENDED);
-        auction.setSuccessfulPrice(finalBid.getBidAmount());
+        auction.setSuccessfulPrice(finalBid.get().getBidAmount());
 
         // 최종 거래 내역 저장
         Transaction transaction = Transaction.builder()
             .auction(auction)
             .seller(auction.getUser())
             .buyer(buyer)
-            .finalPrice(finalBid.getBidAmount())
+            .finalPrice(finalBid.get().getBidAmount())
             .status(TransactionStatus.COMPLETED)
             .build();
 

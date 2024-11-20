@@ -1,5 +1,7 @@
 package com.inhatc.auction.domain.bid.entity;
 
+import java.time.LocalDateTime;
+
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.global.entity.BaseTimeEntity;
@@ -35,10 +37,13 @@ public class Bid extends BaseTimeEntity {
 
     private Long bidAmount;
 
+    private LocalDateTime bidTime;
+
     @Builder
-    public Bid(Auction auction, User user, Long bidAmount) {
+    public Bid(Auction auction, User user, Long bidAmount, LocalDateTime bidTime) {
         this.auction = auction;
         this.user = user;
         this.bidAmount = bidAmount;
+        this.bidTime = bidTime;
     }
 }
