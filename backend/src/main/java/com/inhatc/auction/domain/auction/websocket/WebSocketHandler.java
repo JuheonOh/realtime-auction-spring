@@ -10,7 +10,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
-import org.json.simple.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -31,7 +30,7 @@ import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
 import com.inhatc.auction.global.constant.AuctionStatus;
 import com.inhatc.auction.global.constant.TransactionStatus;
-import com.inhatc.auction.global.security.jwt.JwtTokenProvider;
+import com.inhatc.auction.global.jwt.JwtTokenProvider;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import lombok.RequiredArgsConstructor;
@@ -76,13 +75,11 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
         try {
             if (!jwtTokenProvider.validateToken(accessToken)) {
+                sendErrorMessage(session, "error", HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
                 return;
             }
         } catch (ExpiredJwtException e) {
             sendErrorMessage(session, "token_expired", HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다.");
-            return;
-        } catch (Exception e) {
-            sendErrorMessage(session, "error", HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
             return;
         }
 
@@ -184,16 +181,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     .data(bidResponse)
                     .build();
 
-            Set<WebSocketSession> auctionRoom = auctionRooms.get(auctionId);
-            if (auctionRoom != null) {
-                for (WebSocketSession s : auctionRoom) {
-                    try {
-                        s.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
-                    } catch (IOException e) {
-                        log.error("웹소켓 통신 에러 : {}", e.getMessage());
-                    }
-                }
-            }
+            // 경매 방에 있는 모든 사용자에게 메시지 전송
+            sendToAll(auctionRooms.get(auctionId), response);
+
         } else if (type.equals("buy-now")) {
             // 즉시 구매가 가능한 경매인지 확인
             if (auction.getBuyNowPrice() == 0) {
@@ -249,16 +239,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     .data(buyNowResponse)
                     .build();
 
-            Set<WebSocketSession> auctionRoom = auctionRooms.get(auctionId);
-            if (auctionRoom != null) {
-                for (WebSocketSession s : auctionRoom) {
-                    try {
-                        s.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
-                    } catch (IOException e) {
-                        log.error("웹소켓 통신 에러 : {}", e.getMessage());
-                    }
-                }
-            }
+            sendToAll(auctionRooms.get(auctionId), response);
         }
     }
 
@@ -313,21 +294,20 @@ public class WebSocketHandler extends TextWebSocketHandler {
         sendToAll(auctionRoom, response);
     }
 
-    // 모든 세션에 메시지 전송하는 헬퍼 메서드
-    private void sendToAll(Set<WebSocketSession> sessions, WebSocketResponseDTO response) {
-        if (sessions != null) {
-            for (WebSocketSession s : sessions) {
+    // 경매 방에 연결된 모든 사용자에게 메시지를 전송하는 메서드
+    private void sendToAll(Set<WebSocketSession> auctionRoom, WebSocketResponseDTO response) {
+        if (auctionRoom != null) {
+            for (WebSocketSession session : auctionRoom) {
                 try {
-                    s.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
+                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
                 } catch (IOException e) {
-                    log.error("웹소켓 통신 에러 : {}", e.getMessage());
+                    log.error("웹소켓 통신 에러 [세션ID: {}] : {}", session.getId(), e.getMessage(), e);
                 }
             }
         }
     }
 
     // 경매 남은 시간 전송
-    @SuppressWarnings("unchecked")
     @Scheduled(fixedRate = 60000)
     public void sendRemainingTime() {
         for (Map.Entry<Long, Set<WebSocketSession>> entry : auctionRooms.entrySet()) {
@@ -338,26 +318,24 @@ public class WebSocketHandler extends TextWebSocketHandler {
             Long auctionLeftTime = Math.max(auctionRepository.calculateAuctionLeftTime(auctionId), 0L);
 
             // 메시지 전송
-            JSONObject data = new JSONObject();
-            data.put("auctionLeftTime", auctionLeftTime);
+            WebSocketResponseDTO.AuctionLeftTimeResponse auctionLeftTimeResponse = WebSocketResponseDTO.AuctionLeftTimeResponse
+                    .builder()
+                    .auctionLeftTime(auctionLeftTime)
+                    .build();
 
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("type", "time");
-            jsonObject.put("data", data);
+            WebSocketResponseDTO response = WebSocketResponseDTO.builder()
+                    .type("time")
+                    .status(200)
+                    .data(auctionLeftTimeResponse)
+                    .build();
 
-            for (WebSocketSession session : auctionRoom) {
-                try {
-                    session.sendMessage(new TextMessage(jsonObject.toString()));
-                } catch (IOException e) {
-                    log.error("경매 시간 업데이트 전송 중 에러 : {}", e.getMessage());
-                }
-            }
+            sendToAll(auctionRoom, response);
         }
     }
 
     @Override // 웹소켓 통신 에러시
     public void handleTransportError(@NonNull WebSocketSession session, @NonNull Throwable exception) throws Exception {
-        log.error("웹소켓 통신 에러 : {}", exception.getMessage());
+        log.error("웹소켓 통신 에러 [세션ID: {}] : {}", session.getId(), exception.getMessage(), exception);
     }
 
     @Override // 웹 소켓 연결 종료시

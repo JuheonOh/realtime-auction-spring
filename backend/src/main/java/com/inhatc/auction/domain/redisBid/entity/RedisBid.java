@@ -11,11 +11,11 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@RedisHash(value = "bid")
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@RedisHash(value = "bid")
 public class RedisBid {
     @Id
     private String id;
@@ -30,7 +30,6 @@ public class RedisBid {
     private Long bidAmount;
 
     private LocalDateTime bidTime;
-
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

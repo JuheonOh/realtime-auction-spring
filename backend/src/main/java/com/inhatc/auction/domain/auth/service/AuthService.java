@@ -20,7 +20,7 @@ import com.inhatc.auction.domain.user.repository.UserRepository;
 import com.inhatc.auction.global.constant.Role;
 import com.inhatc.auction.global.constant.SecurityConstants;
 import com.inhatc.auction.global.exception.CustomResponseStatusException;
-import com.inhatc.auction.global.security.jwt.JwtTokenProvider;
+import com.inhatc.auction.global.jwt.JwtTokenProvider;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import lombok.RequiredArgsConstructor;

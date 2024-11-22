@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.inhatc.auction.domain.user.dto.response.UserResponseDTO;
 import com.inhatc.auction.domain.user.service.UserService;
 import com.inhatc.auction.global.constant.SecurityConstants;
-import com.inhatc.auction.global.security.jwt.JwtTokenProvider;
+import com.inhatc.auction.global.jwt.JwtTokenProvider;
 
 import lombok.RequiredArgsConstructor;
 

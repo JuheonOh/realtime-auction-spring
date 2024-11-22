@@ -19,7 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.inhatc.auction.global.exception.CustomAccessDeniedHandler;
 import com.inhatc.auction.global.exception.CustomAuthenticationEntryPoint;
-import com.inhatc.auction.global.security.jwt.JwtTokenFilter;
+import com.inhatc.auction.global.jwt.JwtTokenFilter;
 
 import lombok.RequiredArgsConstructor;
 

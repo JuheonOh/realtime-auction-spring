@@ -1,4 +1,4 @@
-package com.inhatc.auction.global.security.jwt;
+package com.inhatc.auction.global.jwt;
 
 import java.util.Date;
 

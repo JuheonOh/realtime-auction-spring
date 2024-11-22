@@ -66,4 +66,10 @@ public class WebSocketResponseDTO {
         private String message;
         private TransactionData transactionData;
     }
+
+    @Getter
+    @Builder
+    public static class AuctionLeftTimeResponse {
+        private Long auctionLeftTime;
+    }
 }

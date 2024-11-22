@@ -57,7 +57,8 @@ public class BidMigrationService {
     public void migrateAllBidsToMariaDB() {
         log.info("입찰 데이터 마이그레이션 (Redis -> MariaDB)");
 
-        List<RedisBid> allBids = redisBidRepository.findAllByOrderByAuctionIdAscBidTimeAsc();
+        List<RedisBid> allBids = redisBidRepository.findAllByOrderByBidTimeAsc();
+
         for (RedisBid redisBid : allBids) {
             // 이미 존재하는 입찰인지 확인
             boolean exists = bidRepository.existsByAuctionIdAndUserIdAndBidAmount(

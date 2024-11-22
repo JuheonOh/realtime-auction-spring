@@ -16,7 +16,7 @@ import com.inhatc.auction.domain.sse.dto.response.SseBidResponseDTO;
 import com.inhatc.auction.domain.sse.service.SseService;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
-import com.inhatc.auction.global.security.jwt.JwtTokenProvider;
+import com.inhatc.auction.global.jwt.JwtTokenProvider;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
