@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.redisBid.repository;
+package com.inhatc.auction.domain.redis.bid.repository;
 
 import java.util.List;
 import java.util.Optional;
@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
-import com.inhatc.auction.domain.redisBid.entity.RedisBid;
+import com.inhatc.auction.domain.redis.bid.entity.RedisBid;
 
 @Repository
 public interface RedisBidRepository extends CrudRepository<RedisBid, String> {

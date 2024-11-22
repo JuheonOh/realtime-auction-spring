@@ -58,10 +58,6 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    // @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade =
-    // CascadeType.REMOVE)
-    // private Auth auth;
-
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Auction> auctions;
 

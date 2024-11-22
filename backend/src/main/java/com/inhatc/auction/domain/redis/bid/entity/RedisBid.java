@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.redisBid.entity;
+package com.inhatc.auction.domain.redis.bid.entity;
 
 import java.time.LocalDateTime;
 

@@ -7,13 +7,14 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor
+@Getter
 public class CustomUserDetails implements UserDetails {
     private final User user;
-
-    // Constructor
-    public CustomUserDetails(User user) {
-        this.user = user;
-    }
+    private final boolean accountStatus = true;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -28,6 +29,10 @@ public class CustomUserDetails implements UserDetails {
         return user.getEmail();
     }
 
+    public String getPhone() {
+        return user.getPhone();
+    }
+
     @Override
     public String getPassword() {
         return user.getPassword();
@@ -38,28 +43,24 @@ public class CustomUserDetails implements UserDetails {
         return user.getName();
     }
 
-    public String getPhone() {
-        return user.getPhone();
-    }
-
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return accountStatus;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return accountStatus;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true;
+        return accountStatus;
     }
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return accountStatus;
     }
 
 }

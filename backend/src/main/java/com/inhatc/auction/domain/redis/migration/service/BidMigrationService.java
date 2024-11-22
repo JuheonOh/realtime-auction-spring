@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.redisBid.service;
+package com.inhatc.auction.domain.redis.migration.service;
 
 import java.util.List;
 
@@ -11,8 +11,8 @@ import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.bid.entity.Bid;
 import com.inhatc.auction.domain.bid.repository.BidRepository;
-import com.inhatc.auction.domain.redisBid.entity.RedisBid;
-import com.inhatc.auction.domain.redisBid.repository.RedisBidRepository;
+import com.inhatc.auction.domain.redis.bid.entity.RedisBid;
+import com.inhatc.auction.domain.redis.bid.repository.RedisBidRepository;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
 
