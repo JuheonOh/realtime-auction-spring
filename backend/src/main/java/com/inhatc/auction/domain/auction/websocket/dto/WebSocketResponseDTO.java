@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.auction.websocket;
+package com.inhatc.auction.domain.auction.websocket.dto;
 
 import com.inhatc.auction.global.constant.TransactionStatus;
 

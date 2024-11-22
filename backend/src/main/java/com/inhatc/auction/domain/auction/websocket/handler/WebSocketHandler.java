@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.auction.websocket;
+package com.inhatc.auction.domain.auction.websocket.handler;
 
 import java.io.IOException;
 import java.net.URI;
@@ -22,8 +22,10 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
-import com.inhatc.auction.domain.redis.bid.entity.RedisBid;
-import com.inhatc.auction.domain.redis.bid.repository.RedisBidRepository;
+import com.inhatc.auction.domain.auction.websocket.dto.WebSocketRequestDTO;
+import com.inhatc.auction.domain.auction.websocket.dto.WebSocketResponseDTO;
+import com.inhatc.auction.domain.bid.entity.RedisBid;
+import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
 import com.inhatc.auction.domain.transaction.entity.Transaction;
 import com.inhatc.auction.domain.transaction.repository.TransactionRepository;
 import com.inhatc.auction.domain.user.entity.User;

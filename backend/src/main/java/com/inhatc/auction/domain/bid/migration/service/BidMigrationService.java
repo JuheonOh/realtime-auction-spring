@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.redis.migration.service;
+package com.inhatc.auction.domain.bid.migration.service;
 
 import java.util.List;
 
@@ -10,9 +10,9 @@ import org.springframework.web.server.ResponseStatusException;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.bid.entity.Bid;
+import com.inhatc.auction.domain.bid.entity.RedisBid;
 import com.inhatc.auction.domain.bid.repository.BidRepository;
-import com.inhatc.auction.domain.redis.bid.entity.RedisBid;
-import com.inhatc.auction.domain.redis.bid.repository.RedisBidRepository;
+import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
 
