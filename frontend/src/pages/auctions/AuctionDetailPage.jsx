@@ -16,7 +16,7 @@ import { Clock, Eye, Gavel, Heart, MessageSquareMore, Share2, Star, Tag, User } 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useParams } from "react-router-dom";
-import { refreshAccessToken } from "../../apis/UserAPI";
+import httpClientManager from "@apis/HttpClientManager";
 
 // 입찰 단위
 const bidUnit = (currentPrice) => {
@@ -173,7 +173,7 @@ export default function AuctionDetailPage() {
       if (type === "token_expired") {
         try {
           // 리프레쉬 토큰으로 새 액세스 토큰 갱신
-          const newAccessToken = await refreshAccessToken();
+          const newAccessToken = await httpClientManager.refreshAccessToken();
 
           // 새 액세스 토큰으로 user store 업데이트
           dispatch(SET_ACCESS_TOKEN(newAccessToken));

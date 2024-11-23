@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import com.inhatc.auction.domain.user.entity.CustomUserDetails;
-import com.inhatc.auction.global.constant.JwtPayload;
 import com.inhatc.auction.global.constant.JwtHeader;
+import com.inhatc.auction.global.constant.JwtPayload;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -48,7 +48,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .signWith(jwtSecretKey) // 암호화 알고리즘, secret값 세팅
                 .header() // 토큰의 헤더 설정
-                .add("typ", JwtHeader.TOKEN_TYPE) // 토큰의 타입
+                .add("typ", JwtHeader.TOKEN_TYPE.getValue()) // 토큰의 타입
                 .and() // 헤더 설정 종료
                 .claim(JwtPayload.USER_ID.getClaims(), customUserDetails.getId())
                 .claim(JwtPayload.USER_NAME.getClaims(), customUserDetails.getUsername())
