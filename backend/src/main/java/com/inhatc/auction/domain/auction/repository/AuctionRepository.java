@@ -20,11 +20,13 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     // 특정 경매 조회
     @NonNull
     @Query("SELECT a FROM Auction a WHERE a.id = :auctionId")
+    @Override
     Optional<Auction> findById(@NonNull @Param("auctionId") Long auctionId);
 
     // 모든 경매 조회
     @NonNull
     @Query("SELECT a FROM Auction a ORDER BY a.auctionStartTime DESC")
+    @Override
     List<Auction> findAll();
 
     // 남은 시간 계산

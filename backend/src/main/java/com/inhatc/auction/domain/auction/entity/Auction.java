@@ -2,7 +2,6 @@ package com.inhatc.auction.domain.auction.entity;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 import com.inhatc.auction.domain.bid.entity.Bid;
@@ -25,6 +24,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -32,7 +32,9 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "auction")
 @Getter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class Auction extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,26 +65,10 @@ public class Auction extends BaseTimeEntity {
     private AuctionStatus status;
 
     @OneToMany(mappedBy = "auction", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
-    private List<Image> images = new ArrayList<>();
+    private List<Image> images;
 
     @OneToMany(mappedBy = "auction", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
-    private List<Bid> bids = new ArrayList<>();
-
-    @Builder
-    public Auction(User user, Category category, String title, String description, Long startPrice, Long buyNowPrice,
-            LocalDateTime auctionStartTime, LocalDateTime auctionEndTime, AuctionStatus status, List<Image> images) {
-        this.user = user;
-        this.category = category;
-        this.title = title;
-        this.description = description;
-        this.startPrice = startPrice;
-        this.buyNowPrice = buyNowPrice;
-        this.currentPrice = startPrice;
-        this.auctionStartTime = auctionStartTime;
-        this.auctionEndTime = auctionEndTime;
-        this.status = status;
-        this.images = images;
-    }
+    private List<Bid> bids;
 
     public void setImages(List<Image> images) {
         this.images = images;

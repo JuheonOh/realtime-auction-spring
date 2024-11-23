@@ -10,7 +10,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import com.inhatc.auction.domain.user.entity.CustomUserDetails;
-import com.inhatc.auction.global.constant.SecurityConstants;
+import com.inhatc.auction.global.constant.JwtPayload;
+import com.inhatc.auction.global.constant.JwtHeader;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -47,12 +48,12 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .signWith(jwtSecretKey) // 암호화 알고리즘, secret값 세팅
                 .header() // 토큰의 헤더 설정
-                .add("typ", SecurityConstants.TOKEN_TYPE) // 토큰의 타입
+                .add("typ", JwtHeader.TOKEN_TYPE) // 토큰의 타입
                 .and() // 헤더 설정 종료
-                .claim("user-id", customUserDetails.getId())
-                .claim("user-name", customUserDetails.getUsername())
-                .claim("user-email", customUserDetails.getEmail())
-                .claim("user-role", customUserDetails.getAuthorities().toArray()[0].toString())
+                .claim(JwtPayload.USER_ID.getClaims(), customUserDetails.getId())
+                .claim(JwtPayload.USER_NAME.getClaims(), customUserDetails.getUsername())
+                .claim(JwtPayload.USER_EMAIL.getClaims(), customUserDetails.getEmail())
+                .claim(JwtPayload.USER_ROLE.getClaims(), customUserDetails.getAuthorities().toArray()[0].toString())
                 .issuedAt(new Date()) // 토큰 발급 시간
                 .expiration(expiryDate) // 토큰 만료 시간
                 .compact(); // 토큰 생성
@@ -67,25 +68,25 @@ public class JwtTokenProvider {
     }
 
     public String getTokenFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader(SecurityConstants.TOKEN_HEADER);
+        String bearerToken = request.getHeader(JwtHeader.TOKEN_HEADER.getValue());
 
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(SecurityConstants.TOKEN_PREFIX)) {
-            return bearerToken.substring(SecurityConstants.TOKEN_PREFIX.length());
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(JwtHeader.TOKEN_PREFIX.getValue())) {
+            return bearerToken.substring(JwtHeader.TOKEN_PREFIX.getValue().length());
         }
 
         return null;
     }
 
     public Long getUserIdFromToken(String token) {
-        return getClaims(token).get("user-id", Long.class);
+        return getClaims(token).get(JwtPayload.USER_ID.getClaims(), Long.class);
     }
 
     public String getUserNameFromToken(String token) {
-        return getClaims(token).get("user-name", String.class);
+        return getClaims(token).get(JwtPayload.USER_NAME.getClaims(), String.class);
     }
 
     public String getUserEmailFromToken(String token) {
-        return getClaims(token).get("user-email", String.class);
+        return getClaims(token).get(JwtPayload.USER_EMAIL.getClaims(), String.class);
     }
 
     public Date getExpirationFromToken(String token) {

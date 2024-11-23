@@ -1,6 +1,6 @@
-package com.inhatc.auction.global.validation.validator;
+package com.inhatc.auction.domain.user.validation.validator;
 
-import com.inhatc.auction.global.validation.annotation.ValidPhoneNumber;
+import com.inhatc.auction.domain.user.validation.annotation.ValidPhoneNumber;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;

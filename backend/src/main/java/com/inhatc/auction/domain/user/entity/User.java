@@ -6,7 +6,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.bid.entity.Bid;
-import com.inhatc.auction.global.constant.Role;
+import com.inhatc.auction.global.constant.UserRole;
 import com.inhatc.auction.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.Column;
@@ -50,7 +50,7 @@ public class User extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role;
+    private UserRole role;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -65,7 +65,7 @@ public class User extends BaseTimeEntity {
     private List<Bid> bids;
 
     @Builder
-    public User(String email, String password, String name, String phone, String nickname, Role role) {
+    public User(String email, String password, String name, String phone, String nickname, UserRole role) {
         this.email = email;
         this.password = password;
         this.name = name;

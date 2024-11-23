@@ -3,7 +3,7 @@ package com.inhatc.auction.domain.user.dto.request;
 import com.inhatc.auction.domain.user.validation.annotation.EmailUnique;
 import com.inhatc.auction.domain.user.validation.annotation.NicknameUnique;
 import com.inhatc.auction.domain.user.validation.annotation.PasswordMatches;
-import com.inhatc.auction.global.validation.annotation.ValidPhoneNumber;
+import com.inhatc.auction.domain.user.validation.annotation.ValidPhoneNumber;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;

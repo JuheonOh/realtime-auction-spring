@@ -17,8 +17,8 @@ import com.inhatc.auction.domain.user.dto.request.UserRequestDTO;
 import com.inhatc.auction.domain.user.entity.CustomUserDetails;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
-import com.inhatc.auction.global.constant.Role;
-import com.inhatc.auction.global.constant.SecurityConstants;
+import com.inhatc.auction.global.constant.UserRole;
+import com.inhatc.auction.global.constant.JwtHeader;
 import com.inhatc.auction.global.exception.CustomResponseStatusException;
 import com.inhatc.auction.global.jwt.JwtTokenProvider;
 
@@ -79,7 +79,7 @@ public class AuthService {
         this.authRedisRepository.save(auth);
 
         return AuthResponseDTO.builder()
-                .tokenType(SecurityConstants.TOKEN_TYPE.strip())
+                .tokenType(JwtHeader.TOKEN_TYPE.getValue())
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .build();
@@ -105,7 +105,7 @@ public class AuthService {
                 .name(requestDTO.getName())
                 .phone(requestDTO.getPhone())
                 .nickname(requestDTO.getNickname())
-                .role(Role.ROLE_USER)
+                .role(UserRole.USER)
                 .build();
 
         // 저장

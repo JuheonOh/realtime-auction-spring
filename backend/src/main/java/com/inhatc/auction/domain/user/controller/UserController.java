@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.inhatc.auction.domain.user.dto.response.UserResponseDTO;
 import com.inhatc.auction.domain.user.service.UserService;
-import com.inhatc.auction.global.constant.SecurityConstants;
+import com.inhatc.auction.global.constant.JwtHeader;
 import com.inhatc.auction.global.jwt.JwtTokenProvider;
 
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ public class UserController {
      */
     @GetMapping
     public ResponseEntity<?> findUser(@RequestHeader("Authorization") String header) {
-        String accessToken = header.substring(SecurityConstants.TOKEN_PREFIX.length());
+        String accessToken = header.substring(JwtHeader.TOKEN_PREFIX.getValue().length());
 
         Long id = this.jwtTokenProvider.getUserIdFromToken(accessToken);
         UserResponseDTO userResponseDTO = this.userService.findById(id);
