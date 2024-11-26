@@ -80,7 +80,7 @@ export default function NotificationComponent() {
         }
 
         // SSE 연결
-        eventSource = getNotificationStream(user.info.id);
+        eventSource = getNotificationStream(user.accessToken, user.info.id);
 
         // 연결 성공 이벤트
         eventSource.addEventListener("connect", (e) => {

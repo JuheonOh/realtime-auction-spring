@@ -21,9 +21,11 @@ import com.inhatc.auction.domain.notification.dto.response.NotificationResponseD
 import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
 import com.inhatc.auction.domain.notification.repository.NotificationRepository;
+import com.inhatc.auction.global.jwt.JwtTokenProvider;
 import com.inhatc.auction.global.utils.TimeUtils;
 
 import jakarta.annotation.PreDestroy;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
@@ -31,7 +33,7 @@ import lombok.extern.log4j.Log4j2;
 @RequiredArgsConstructor
 @Log4j2
 public class SseNotificationService {
-
+    private final JwtTokenProvider jwtTokenProvider;
     private final AuctionRepository auctionRepository;
     private final FavoriteRepository favoriteRepository;
     private final NotificationRepository notificationRepository;
@@ -40,7 +42,14 @@ public class SseNotificationService {
     private static final Long DEFAULT_TIMEOUT = 1000L * 60 * 10; // 10분
 
     // SSE 연결 생성
-    public SseEmitter subscribe(Long userId) {
+    public SseEmitter subscribe(HttpServletRequest request, Long userId) {
+        String accessToken = jwtTokenProvider.getTokenFromRequest(request);
+        Long tokenUserId = jwtTokenProvider.getUserIdFromToken(accessToken);
+
+        if (!jwtTokenProvider.validateToken(accessToken) || userId != tokenUserId) {
+            return null;
+        }
+
         SseEmitter emitter = new SseEmitter(DEFAULT_TIMEOUT);
 
         // 사용자 ID에 해당하는 SseEmitter 리스트 생성

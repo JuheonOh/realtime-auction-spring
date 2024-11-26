@@ -7,6 +7,8 @@ exports.deleteNotification = exports.patchNotification = exports.patchNotificati
 
 var _constant = require("@utils/constant");
 
+var _eventSourcePolyfill = require("event-source-polyfill");
+
 var _HttpClientManager = _interopRequireDefault(require("./HttpClientManager"));
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
@@ -72,9 +74,14 @@ var getNotifications = function getNotifications() {
 
 exports.getNotifications = getNotifications;
 
-var getNotificationStream = function getNotificationStream(userId) {
+var getNotificationStream = function getNotificationStream(token, userId) {
   try {
-    var eventSource = new EventSource("".concat(_constant.API_BASE_URL, "/api/users/").concat(userId, "/notifications/stream"));
+    var EventSource = _eventSourcePolyfill.EventSourcePolyfill || _eventSourcePolyfill.NativeEventSource;
+    var eventSource = new EventSource("".concat(_constant.API_BASE_URL, "/api/users/").concat(userId, "/notifications/stream"), {
+      headers: {
+        Authorization: _HttpClientManager["default"].getAuthHeader(token)
+      }
+    });
     return eventSource;
   } catch (error) {
     throw error;
