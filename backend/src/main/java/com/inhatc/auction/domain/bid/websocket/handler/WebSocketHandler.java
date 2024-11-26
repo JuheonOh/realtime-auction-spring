@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.auction.websocket.handler;
+package com.inhatc.auction.domain.bid.websocket.handler;
 
 import java.io.IOException;
 import java.net.URI;
@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -22,10 +23,15 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
-import com.inhatc.auction.domain.auction.websocket.dto.WebSocketRequestDTO;
-import com.inhatc.auction.domain.auction.websocket.dto.WebSocketResponseDTO;
 import com.inhatc.auction.domain.bid.entity.RedisBid;
 import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
+import com.inhatc.auction.domain.bid.websocket.dto.WebSocketRequestDTO;
+import com.inhatc.auction.domain.bid.websocket.dto.WebSocketResponseDTO;
+import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
+import com.inhatc.auction.domain.notification.entity.Notification;
+import com.inhatc.auction.domain.notification.entity.NotificationType;
+import com.inhatc.auction.domain.notification.repository.NotificationRepository;
+import com.inhatc.auction.domain.notification.service.SseNotificationService;
 import com.inhatc.auction.domain.transaction.entity.Transaction;
 import com.inhatc.auction.domain.transaction.repository.TransactionRepository;
 import com.inhatc.auction.domain.user.entity.User;
@@ -33,6 +39,7 @@ import com.inhatc.auction.domain.user.repository.UserRepository;
 import com.inhatc.auction.global.constant.AuctionStatus;
 import com.inhatc.auction.global.constant.TransactionStatus;
 import com.inhatc.auction.global.jwt.JwtTokenProvider;
+import com.inhatc.auction.global.utils.TimeUtils;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.transaction.Transactional;
@@ -43,11 +50,16 @@ import lombok.extern.log4j.Log4j2;
 @Component
 @RequiredArgsConstructor
 public class WebSocketHandler extends TextWebSocketHandler {
+
     private final JwtTokenProvider jwtTokenProvider;
+
     private final UserRepository userRepository;
     private final AuctionRepository auctionRepository;
     private final RedisBidRepository redisBidRepository;
     private final TransactionRepository transactionRepository;
+    private final NotificationRepository notificationRepository;
+
+    private final SseNotificationService sseNotificationService;
 
     private final Map<Long, Set<WebSocketSession>> auctionRooms = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -63,6 +75,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     }
 
     @Transactional // 데이터 통신시
+    @Override
     protected void handleTextMessage(@NonNull WebSocketSession session, @NonNull TextMessage message) throws Exception {
         Long auctionId = getAuctionId(session);
         Set<WebSocketSession> auctionRoom = auctionRooms.get(auctionId);
@@ -121,18 +134,18 @@ public class WebSocketHandler extends TextWebSocketHandler {
             Long bidAmount = Long.valueOf(data.get("bidAmount"));
 
             // 최고 입찰자 조회
-            List<RedisBid> redisBids = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auctionId);
-            Boolean isFirstBid = redisBids.isEmpty();
+            List<RedisBid> bidList = this.redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auctionId);
+            RedisBid highestBid = bidList.isEmpty() ? null : bidList.get(0);
 
-            // 첫 입찰의 경우 시작가와 같거나 높아야 함
-            if (isFirstBid) {
+            // 최고 입찰자가 없는 경우
+            if (highestBid == null) {
+                // 시작가와 같거나 높아야.ham
                 if (bidAmount < auction.getStartPrice()) {
                     sendToOne(session, "error", HttpStatus.BAD_REQUEST, "입찰 금액이 시작가와 같거나 높아야 합니다");
                     return;
                 }
             } else {
                 // 현재 최고입찰자가 본인인 경우 입찰할 수 없음
-                RedisBid highestBid = redisBids.get(0);
                 if (highestBid.getUserId().equals(user.getId())) {
                     sendToOne(session, "error", HttpStatus.BAD_REQUEST, "현재 고객님이 최고입찰자입니다.");
                     return;
@@ -153,11 +166,56 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     .bidTime(LocalDateTime.now())
                     .build();
 
-            redisBidRepository.save(newBid);
+            this.redisBidRepository.save(newBid);
 
             // 현재 경매 가격 업데이트
             auction.updateCurrentPrice(bidAmount);
             this.auctionRepository.save(auction);
+
+            // 현재 입찰자에게 BID 알림
+            // BID 알림 생성 (현재 입찰자에게)
+            Notification bidNotification = Notification.builder()
+                    .type(NotificationType.BID)
+                    .user(user)
+                    .auctionId(auctionId)
+                    .build();
+
+            this.notificationRepository.save(bidNotification);
+
+            // BID 알림 전송
+            NotificationResponseDTO bidDTO = NotificationResponseDTO.builder()
+                    .id(bidNotification.getId())
+                    .type(NotificationType.BID)
+                    .isRead(bidNotification.getIsRead())
+                    .time(TimeUtils.getRelativeTimeString(bidNotification.getCreatedAt()))
+                    .build();
+
+            sseNotificationService.sendNotification(userId, bidDTO);
+
+            // 이전 최고 입찰자가 있는 경우 OUTBID 알림
+            if (highestBid != null) {
+                Long previousBidderId = highestBid.getUserId();
+                User previousBidder = userRepository.findById(previousBidderId).orElse(null);
+
+                // OUTBID 알림 생성
+                Notification outbidNotification = Notification.builder()
+                        .type(NotificationType.OUTBID)
+                        .auctionId(auctionId)
+                        .user(previousBidder)
+                        .build();
+
+                this.notificationRepository.save(outbidNotification);
+
+                // OUTBID 알림 전송
+                NotificationResponseDTO outbidDTO = NotificationResponseDTO.builder()
+                        .id(outbidNotification.getId())
+                        .type(outbidNotification.getType())
+                        .isRead(outbidNotification.getIsRead())
+                        .time(TimeUtils.getRelativeTimeString(outbidNotification.getCreatedAt()))
+                        .build();
+
+                this.sseNotificationService.sendNotification(previousBidderId, outbidDTO);
+            }
 
             // 경매 남은 시간
             Long auctionLeftTime = Math.max(0,
@@ -239,10 +297,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
         Set<WebSocketSession> auctionRoom = auctionRooms.get(auction.getId());
 
         // Redis에서 최고 입찰 정보 조회
-        List<RedisBid> highestBids = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
+        Optional<RedisBid> highestBid = redisBidRepository.findFirstByAuctionIdOrderByBidAmountDesc(auction.getId());
 
         // 입찰 내역이 없는 경우 처리
-        if (highestBids.isEmpty()) {
+        if (highestBid.isEmpty()) {
             WebSocketResponseDTO.TransactionResponse transactionResponse = WebSocketResponseDTO.TransactionResponse
                     .builder()
                     .message("입찰자가 없어 경매가 종료되었습니다.")
@@ -253,27 +311,27 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         // 최고 입찰자 정보 조회
-        RedisBid highestBid = highestBids.get(0);
-        User highestBidder = userRepository.findById(highestBid.getUserId())
-                .orElseThrow(() -> new IllegalStateException("최고 입찰자를 찾을 수 없습니다."));
+        Optional<User> highestBidder = userRepository.findById(highestBid.get().getUserId());
+        if (highestBidder.isPresent()) {
+            WebSocketResponseDTO.TransactionData transactionData = WebSocketResponseDTO.TransactionData.builder()
+                    .userId(highestBidder.get().getId())
+                    .nickname(highestBidder.get().getNickname())
+                    .status(TransactionStatus.COMPLETED)
+                    .finalPrice(auction.getSuccessfulPrice())
+                    .build();
 
-        WebSocketResponseDTO.TransactionData transactionData = WebSocketResponseDTO.TransactionData.builder()
-                .userId(highestBidder.getId())
-                .nickname(highestBidder.getNickname())
-                .status(TransactionStatus.COMPLETED)
-                .finalPrice(auction.getSuccessfulPrice())
-                .build();
+            WebSocketResponseDTO.TransactionResponse transactionResponse = WebSocketResponseDTO.TransactionResponse
+                    .builder()
+                    .message("경매가 종료되었습니다.")
+                    .transactionData(transactionData)
+                    .build();
 
-        WebSocketResponseDTO.TransactionResponse transactionResponse = WebSocketResponseDTO.TransactionResponse
-                .builder()
-                .message("경매가 종료되었습니다.")
-                .transactionData(transactionData)
-                .build();
+            sendToAll(auctionRoom, "ended", HttpStatus.OK, transactionResponse);
+        }
 
-        sendToAll(auctionRoom, "ended", HttpStatus.OK, transactionResponse);
     }
 
-    // 경매 남은 시간 전송
+    // 경매 남은 시간 전송 (1분 마다)
     @Scheduled(fixedRate = 60000)
     public void sendRemainingTime() {
         for (Map.Entry<Long, Set<WebSocketSession>> entry : auctionRooms.entrySet()) {
@@ -328,7 +386,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    // 경매 ID 추출
+    // URI에서 경매 ID 추출
     private Long getAuctionId(WebSocketSession session) {
         URI uri = session.getUri();
         if (uri == null) {
@@ -351,6 +409,14 @@ public class WebSocketHandler extends TextWebSocketHandler {
     @Override // 웹소켓 통신 에러시
     public void handleTransportError(@NonNull WebSocketSession session, @NonNull Throwable exception) throws Exception {
         log.error("웹소켓 통신 에러 [세션ID: {}] : {}", session.getId(), exception.getMessage(), exception);
+
+        if (exception instanceof IOException) {
+            try {
+                session.close();
+            } catch (IOException e) {
+                log.error("세션 종료 중 오류 발생 : {}", e.getMessage());
+            }
+        }
     }
 
     @Override // 웹 소켓 연결 종료시

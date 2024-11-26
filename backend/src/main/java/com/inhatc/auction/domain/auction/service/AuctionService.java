@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -24,14 +25,21 @@ import com.inhatc.auction.domain.auction.dto.response.AuctionDetailResponseDTO;
 import com.inhatc.auction.domain.auction.dto.response.AuctionResponseDTO;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
-import com.inhatc.auction.domain.auction.websocket.handler.WebSocketHandler;
 import com.inhatc.auction.domain.bid.dto.response.BidResponseDTO;
 import com.inhatc.auction.domain.bid.entity.RedisBid;
 import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
+import com.inhatc.auction.domain.bid.websocket.handler.WebSocketHandler;
 import com.inhatc.auction.domain.category.entity.Category;
 import com.inhatc.auction.domain.category.repository.CategoryRepository;
+import com.inhatc.auction.domain.favorite.entity.Favorite;
+import com.inhatc.auction.domain.favorite.repository.FavoriteRepository;
 import com.inhatc.auction.domain.image.dto.response.ImageResponseDTO;
 import com.inhatc.auction.domain.image.entity.Image;
+import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
+import com.inhatc.auction.domain.notification.entity.Notification;
+import com.inhatc.auction.domain.notification.entity.NotificationType;
+import com.inhatc.auction.domain.notification.repository.NotificationRepository;
+import com.inhatc.auction.domain.notification.service.SseNotificationService;
 import com.inhatc.auction.domain.sse.dto.response.SseTransactionResponseDTO;
 import com.inhatc.auction.domain.sse.service.SseService;
 import com.inhatc.auction.domain.transaction.dto.response.TransactionResponseDTO;
@@ -42,9 +50,9 @@ import com.inhatc.auction.domain.user.repository.UserRepository;
 import com.inhatc.auction.global.constant.AuctionStatus;
 import com.inhatc.auction.global.constant.TransactionStatus;
 import com.inhatc.auction.global.jwt.JwtTokenProvider;
+import com.inhatc.auction.global.utils.TimeUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
@@ -52,29 +60,52 @@ import lombok.extern.log4j.Log4j2;
 @Service
 @RequiredArgsConstructor
 public class AuctionService {
+
   @Value("${upload.path}")
   private String uploadPath;
 
   private final UserRepository userRepository;
   private final AuctionRepository auctionRepository;
   private final CategoryRepository categoryRepository;
+  private final FavoriteRepository favoriteRepository;
   private final TransactionRepository transactionRepository;
   private final SseService sseEmitterService;
   private final JwtTokenProvider jwtTokenProvider;
-  private final WebSocketHandler webSocketHandler;
   private final RedisBidRepository redisBidRepository;
+  private final NotificationRepository notificationRepository;
+  private final SseNotificationService sseNotificationService;
+  private final WebSocketHandler webSocketHandler;
 
-  @Transactional
-  public AuctionDetailResponseDTO getAuctionDetail(Long auctionId) {
+  @Transactional(readOnly = true)
+  public AuctionDetailResponseDTO getAuctionDetail(HttpServletRequest request, Long auctionId) {
+    // 경매 조회
     Auction auction = this.auctionRepository.findById(auctionId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
             "경매를 찾을 수 없습니다"));
 
     // Redis에서 입찰 내역 조회
     List<RedisBid> redisBids = redisBidRepository.findByAuctionIdOrderByBidTimeAsc(auctionId);
-    Long bidCount = (long) redisBids.size();
 
-    Long watchCount = 0L;
+    // 입찰 개수
+    Long bidCount = Long.valueOf(redisBids.size());
+
+    // 기본적으로 관심 경매 여부는 false
+    boolean isFavorite = false;
+
+    // 관심 경매 여부 확인 (로그인된 경우)
+    if (request.getHeader("Authorization") != null) {
+      String accessToken = jwtTokenProvider.getTokenFromRequest(request);
+      Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+      User user = userRepository.findById(userId).get();
+
+      // 관심 경매 여부 확인
+      isFavorite = favoriteRepository.existsByUserAndAuction(user, auction);
+    }
+
+    // 관심 개수
+    Long favoriteCount = this.favoriteRepository.countByAuctionId(auctionId);
+
+    // 경매 종료까지 남은 시간 (초)
     Long auctionLeftTime = Math.max(0,
         Duration.between(LocalDateTime.now(), auction.getAuctionEndTime()).toSeconds());
 
@@ -90,6 +121,7 @@ public class AuctionService {
           .build();
     }
 
+    // 경매 이미지 리스트
     List<ImageResponseDTO> imageList = auction.getImages().stream()
         .map(image -> ImageResponseDTO.builder()
             .filePath(image.getFilePath())
@@ -101,7 +133,8 @@ public class AuctionService {
     List<BidResponseDTO> bidList = redisBids.stream()
         .map((RedisBid bid) -> {
           User bidder = userRepository.findById(bid.getUserId())
-              .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+              .orElseThrow(() -> new ResponseStatusException(
+                  HttpStatus.NOT_FOUND,
                   "입찰자 정보를 찾을 수 없습니다."));
 
           return BidResponseDTO.builder()
@@ -124,7 +157,8 @@ public class AuctionService {
         .currentPrice(auction.getCurrentPrice())
         .buyNowPrice(auction.getBuyNowPrice())
         .bidCount(bidCount)
-        .watchCount(watchCount)
+        .favoriteCount(favoriteCount)
+        .isFavorite(isFavorite)
         .auctionStartTime(auction.getAuctionStartTime())
         .auctionEndTime(auction.getAuctionEndTime())
         .auctionLeftTime(auctionLeftTime)
@@ -138,7 +172,7 @@ public class AuctionService {
         .build();
   }
 
-  @Transactional
+  @Transactional(readOnly = true)
   public List<AuctionResponseDTO> getFeaturedAuctionList() {
     // 경매 입찰 수 내림차순으로 조회
     List<Auction> auctions = this.auctionRepository.findAllByOrderByBidCountDesc();
@@ -168,7 +202,7 @@ public class AuctionService {
         .collect(Collectors.toList());
   }
 
-  @Transactional
+  @Transactional(readOnly = true)
   public List<AuctionResponseDTO> getAuctionList() {
     // 현재시간보다 경매 종료 시간 + 10분 이후인 경매 조회
     List<Auction> auctions = auctionRepository.findAllByAuctionEndTimeAfter(10);
@@ -223,6 +257,7 @@ public class AuctionService {
         .description(requestDTO.getDescription())
         .startPrice(requestDTO.getStartPrice())
         .buyNowPrice(requestDTO.getBuyNowPrice())
+        .currentPrice(requestDTO.getStartPrice())
         .auctionStartTime(LocalDateTime.now())
         .auctionEndTime(LocalDateTime.now().plusDays(requestDTO.getAuctionDuration()))
         .status(AuctionStatus.ACTIVE)
@@ -233,7 +268,8 @@ public class AuctionService {
           .map(image -> {
             try {
               if (image.getOriginalFilename() == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
                     "이미지 파일 이름이 올바르지 않습니다");
               }
 
@@ -254,7 +290,8 @@ public class AuctionService {
                   && !fileType.equals("image/gif")
                   && !fileType.equals("image/bmp")
                   && !fileType.equals("image/webp")) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
                     "이미지 파일 타입이 올바르지 않습니다. 허용되는 타입: jpeg, png, jpg, gif, bmp, webp");
               }
 
@@ -270,7 +307,8 @@ public class AuctionService {
                   .build();
             } catch (IllegalStateException | IOException e) {
               log.error("이미지 업로드 중 오류 발생", e);
-              throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+              throw new ResponseStatusException(
+                  HttpStatus.INTERNAL_SERVER_ERROR,
                   "이미지 업로드 중 오류 발생", e);
             }
           })
@@ -290,8 +328,9 @@ public class AuctionService {
   @Transactional
   public void buyNowAuction(HttpServletRequest request, Long auctionId) {
     // Authorization 헤더가 없는 경우 (로그인 안된 경우)
-    if (request.getHeader("Authorization") == null)
+    if (request.getHeader("Authorization") == null) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+    }
 
     // 토큰이 유효하지 않은 경우
     String accessToken = jwtTokenProvider.getTokenFromRequest(request);
@@ -347,30 +386,42 @@ public class AuctionService {
     this.sseEmitterService.broadcastBuyNow(auctionId, sseBuyNowResponseDTO);
   }
 
-  // 매 분마다 종료된 경매 업데이트
-  @Scheduled(fixedRate = 60000)
+  // 30초 마다 종료된 경매 업데이트
+  @Scheduled(fixedRate = 30000)
   @Transactional
   public void updateEndedAuctions() {
     LocalDateTime now = LocalDateTime.now();
     List<Auction> endedAuctions = auctionRepository.findByAuctionEndTimeBeforeAndStatus(now, AuctionStatus.ACTIVE);
 
     for (Auction auction : endedAuctions) {
-      // Redis에서 최종 입찰 내역 조회
-      Optional<RedisBid> finalBid = redisBidRepository.findFirstByAuctionIdOrderByBidAmountDesc(auction.getId());
+      // Redis에서 금액순으로 정렬된 입찰 내역 조회
+      List<RedisBid> bidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
+      RedisBid highestBid = bidList.isEmpty() ? null : bidList.get(0); // 최고 입찰자
 
-      if (finalBid.isPresent()) { // 입찰 내역이 있는 경우
-        User buyer = userRepository.findById(finalBid.get().getUserId())
-            .orElseThrow(() -> new IllegalStateException("최종 입찰자를 찾을 수 없습니다."));
+      // 입찰 내역이 없는 경우
+      if (highestBid == null) {
+        auction.updateStatus(AuctionStatus.ENDED);
+        auction.setSuccessfulPrice(0L);
+        this.auctionRepository.save(auction);
+      } else {
+        // 입찰자가 있는 경우
+        Optional<User> winner = userRepository.findById(highestBid.getUserId());
+
+        log.info("경매 ID: {}", auction.getId());
+        log.info("최고 입찰 ID: {}", highestBid.getId());
+        log.info("최고 입찰 금액: {}", highestBid.getBidAmount());
+        log.info("최고 입찰자 ID: {}", highestBid.getUserId());
+        log.info("최고 입찰자: {}", winner.get().getNickname());
 
         auction.updateStatus(AuctionStatus.ENDED);
-        auction.setSuccessfulPrice(finalBid.get().getBidAmount());
+        auction.setSuccessfulPrice(highestBid.getBidAmount());
 
         // 최종 거래 내역 저장
         Transaction transaction = Transaction.builder()
             .auction(auction)
             .seller(auction.getUser())
-            .buyer(buyer)
-            .finalPrice(finalBid.get().getBidAmount())
+            .buyer(winner.get())
+            .finalPrice(highestBid.getBidAmount())
             .status(TransactionStatus.COMPLETED)
             .build();
 
@@ -378,14 +429,52 @@ public class AuctionService {
         this.auctionRepository.save(auction);
         log.info("경매 ID: {} 종료됨", auction.getId());
 
+        // 경매 낙찰 알림 생성
+        Notification notification = Notification.builder()
+            .user(winner.get())
+            .type(NotificationType.WIN)
+            .auctionId(auction.getId())
+            .build();
+
+        this.notificationRepository.save(notification);
+
+        // 경매 낙찰 알림 전송
+        NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+            .id(notification.getId())
+            .type(notification.getType())
+            .isRead(notification.getIsRead())
+            .time(TimeUtils.getRelativeTimeString(notification.getCreatedAt()))
+            .build();
+
+        this.sseNotificationService.sendNotification(winner.get().getId(),
+            notificationResponseDTO);
+
         // WebSocket 통해 경매 종료 알림
         this.webSocketHandler.broadcastEnded(auction);
-
-      } else { // 입찰 내역이 없는 경우
-        auction.updateStatus(AuctionStatus.ENDED);
-        auction.setSuccessfulPrice(0L);
-        this.auctionRepository.save(auction);
       }
+    }
+  }
+
+  // 관심한 경매 등록/제거
+  @Transactional
+  public void favoriteAuction(HttpServletRequest request, Long auctionId) {
+    String accessToken = jwtTokenProvider.getTokenFromRequest(request);
+    Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+
+    User user = this.userRepository.findById(userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
+
+    Auction auction = this.auctionRepository.findById(auctionId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다"));
+
+    // 기존에 관심한 경매이면 제거
+    boolean isFavorite = this.favoriteRepository.existsByUserAndAuction(user, auction);
+    if (isFavorite) {
+      this.favoriteRepository.deleteByUserAndAuction(user, auction);
+    } else {
+      // 관심한 경매 등록
+      Favorite favorite = Favorite.builder().user(user).auction(auction).build();
+      this.favoriteRepository.save(favorite);
     }
   }
 }

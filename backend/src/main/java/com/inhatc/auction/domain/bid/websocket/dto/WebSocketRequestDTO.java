@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.auction.websocket.dto;
+package com.inhatc.auction.domain.bid.websocket.dto;
 
 import java.util.Map;
 

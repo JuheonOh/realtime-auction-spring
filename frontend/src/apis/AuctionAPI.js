@@ -1,115 +1,11 @@
-import { clearCookie, getCookie, setCookie } from "@data/storage/Cookie";
 import { API_BASE_URL } from "@utils/constant";
 import axios from "axios";
+import httpClientManager from "./HttpClientManager";
 
-const TOKEN_TYPE = "Bearer";
-
-export const AuctionApi = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// 요청 인터셉터: 매 요청마다 최신 토큰 사용
-AuctionApi.interceptors.request.use(
-  (config) => {
-    const accessToken = getCookie("accessToken");
-    if (accessToken) {
-      config.headers["Authorization"] = `${TOKEN_TYPE} ${accessToken}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// 응답 인터셉터: 토큰 만료 시 갱신 및 재요청
-AuctionApi.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const newAccessToken = await refreshAccessToken();
-        originalRequest.headers["Authorization"] = `${TOKEN_TYPE} ${newAccessToken}`;
-        return AuctionApi(originalRequest);
-      } catch (refreshError) {
-        return Promise.reject(refreshError);
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
-// 토큰 갱신
-const refreshAccessToken = async () => {
-  try {
-    const refreshToken = getCookie("refreshToken");
-    const response = await axios.get(`${API_BASE_URL}/api/auth/refresh`, {
-      headers: {
-        REFRESH_TOKEN: refreshToken,
-      },
-    });
-
-    const newAccessToken = response.data.accessToken;
-    setCookie("accessToken", newAccessToken);
-
-    return newAccessToken;
-  } catch (error) {
-    if (error.response.status === 403) {
-      clearCookie();
-      window.location.replace("/auth/login");
-    }
-  }
-};
+const AuctionApi = httpClientManager.createApiInstance();
 
 //////////////////////////////////////
-// No Auth
-
-// 경매 목록 조회
-export const getAuctionList = async () => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/api/auctions`);
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
-// 주목할 만한 경매 조회
-export const getFeaturedAuctions = async () => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/api/auctions/featured`);
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
-// 경매 상세 조회
-export const getAuctionDetail = async (auctionId) => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/api/auctions/${auctionId}`);
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
-// 입찰 스트림 조회
-export const getAuctionBidStream = async (auctionId) => {
-  try {
-    const eventSource = new EventSource(`${API_BASE_URL}/api/auctions/${auctionId}/bids-stream`);
-    return eventSource;
-  } catch (error) {
-    throw error;
-  }
-};
-
-//////////////////////////////////////
-// Auth
+// 인증이 필요한 API
 // 경매 생성
 export const createAuction = async (formData) => {
   try {
@@ -139,6 +35,58 @@ export const buyNowAuction = async (auctionId) => {
   try {
     const response = await AuctionApi.post(`/api/auctions/${auctionId}/buy-now`);
     return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 관심 경매 추가/삭제
+export const toggleFavorite = async (auctionId) => {
+  try {
+    const response = await AuctionApi.post(`/api/auctions/${auctionId}/favorites`);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+//////////////////////////////////////
+// 인증이 필요하지 않은 API
+// 경매 목록 조회
+export const getAuctionList = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/auctions`);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 주목할 만한 경매 조회
+export const getFeaturedAuctions = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/auctions/featured`);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 경매 상세 조회
+export const getAuctionDetail = async (auctionId) => {
+  try {
+    const response = await AuctionApi.get(`/api/auctions/${auctionId}`);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// 입찰 스트림 조회
+export const getAuctionBidStream = async (auctionId) => {
+  try {
+    const eventSource = new EventSource(`${API_BASE_URL}/api/auctions/${auctionId}/bids-stream`);
+    return eventSource;
   } catch (error) {
     throw error;
   }

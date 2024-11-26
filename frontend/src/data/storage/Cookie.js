@@ -15,7 +15,8 @@ export const removeCookie = (name, options) => {
 };
 
 export const clearCookie = () => {
-  cookies.remove("tokenType");
-  cookies.remove("accessToken");
-  cookies.remove("refreshToken");
+  const options = { path: "/" };
+  ["tokenType", "accessToken", "refreshToken"].forEach((name) => {
+    removeCookie(name, options);
+  });
 };

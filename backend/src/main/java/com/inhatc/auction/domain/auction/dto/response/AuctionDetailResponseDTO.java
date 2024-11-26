@@ -11,8 +11,10 @@ import com.inhatc.auction.global.constant.AuctionStatus;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
+@Setter
 @Builder
 public class AuctionDetailResponseDTO {
     private Long id;
@@ -26,7 +28,8 @@ public class AuctionDetailResponseDTO {
     private Long buyNowPrice;
     private Long successfulPrice;
     private Long bidCount;
-    private Long watchCount;
+    private Long favoriteCount;
+    private Boolean isFavorite;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime auctionStartTime;
