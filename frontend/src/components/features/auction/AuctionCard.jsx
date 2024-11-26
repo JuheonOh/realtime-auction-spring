@@ -10,7 +10,7 @@ export default function AuctionCard({ auction }) {
       {/* 상품 이미지 */}
       <Link to={`/auctions/${auction.id}`}>
         <div className="relative w-full h-48">
-          <img src={`${IMAGE_URL}/${auction.image}`} alt={auction.title} className="w-full h-full object-cover" onError={(e) => (e.target.src = `${IMAGE_URL}/placeholder.svg`)} loading="lazy" />
+          <img src={`${IMAGE_URL}/${auction.image}`} alt={auction.title} className="w-full h-full object-cover" onError={(e) => (e.target.src = `${IMAGE_URL}/placeholder.svg`)} />
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group hover:bg-opacity-30 transition-opacity duration-300">
             <span className="text-white text-xl font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-300">자세히 보기</span>
           </div>

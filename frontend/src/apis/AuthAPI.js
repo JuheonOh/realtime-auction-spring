@@ -1,28 +1,7 @@
 import { getCookie } from "@data/storage/Cookie";
-import { API_BASE_URL } from "@utils/constant";
-import axios from "axios";
+import HttpClientManager from "./HttpClientManager";
 
-export const AuthApi = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// 요청 인터셉터 추가
-AuthApi.interceptors.request.use(
-  (config) => {
-    const tokenType = getCookie("tokenType");
-    const accessToken = getCookie("accessToken");
-
-    if (accessToken) {
-      config.headers["Authorization"] = `${tokenType} ${accessToken}`;
-    }
-
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+export const AuthApi = HttpClientManager.createApiInstance();
 
 export const login = async ({ email, password }) => {
   try {
@@ -50,7 +29,7 @@ export const logout = async () => {
         REFRESH_TOKEN: getCookie("refreshToken"),
       },
     });
-
+    
     return response;
   } catch (error) {
     throw error;

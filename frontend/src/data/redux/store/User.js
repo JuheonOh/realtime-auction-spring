@@ -1,4 +1,4 @@
-import { clearCookie, getCookie } from "@data/storage/Cookie";
+import { getCookie } from "@data/storage/Cookie";
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
@@ -16,7 +16,6 @@ const userSlice = createSlice({
       state.info = {};
       state.authenticated = false;
       state.accessToken = null;
-      clearCookie();
     },
     INIT_INFO: (state) => {
       state.info = {};
@@ -26,9 +25,7 @@ const userSlice = createSlice({
     },
     INIT_ACCESS_TOKEN: (state) => {
       state.authenticated = false;
-      state.tokenType = null;
       state.accessToken = null;
-      state.refreshToken = null;
     },
     SET_ACCESS_TOKEN: (state, action) => {
       state.authenticated = true;

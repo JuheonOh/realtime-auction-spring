@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@utils/constant";
 import httpClientManager from "./HttpClientManager";
 
 // API 인스턴스 생성
@@ -6,6 +7,57 @@ const UserApi = httpClientManager.createApiInstance();
 export const getUser = async () => {
   try {
     const response = await UserApi.get(`/api/users`);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getNotifications = async () => {
+  try {
+    const response = await UserApi.get(`/api/users/notifications`);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getNotificationStream = (userId) => {
+  try {
+    const eventSource = new EventSource(`${API_BASE_URL}/api/users/${userId}/notifications/stream`);
+    return eventSource;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const patchNotificationAll = async () => {
+  try {
+    const response = await UserApi.patch(`/api/users/notifications/all`);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const patchNotification = async (notificationId) => {
+  try {
+    const response = await UserApi.patch(`/api/users/notifications`, {
+      notificationId,
+    });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteNotification = async (notificationId) => {
+  try {
+    const response = await UserApi.delete(`/api/users/notifications`, {
+      data: {
+        notificationId,
+      },
+    });
     return response;
   } catch (error) {
     throw error;

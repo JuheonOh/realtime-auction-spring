@@ -1,4 +1,5 @@
 import { getAuctionDetail } from "@apis/AuctionAPI";
+import httpClientManager from "@apis/HttpClientManager";
 import { getUser } from "@apis/UserAPI";
 import InValidAlert from "@components/common/alerts/InValidAlert";
 import SuccessAlert from "@components/common/alerts/SuccessAlert";
@@ -15,8 +16,8 @@ import formatTime from "@utils/formatTime";
 import { Clock, Eye, Gavel, Heart, MessageSquareMore, Share2, Star, Tag, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Link, useParams } from "react-router-dom";
-import httpClientManager from "@apis/HttpClientManager";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { toggleFavorite } from "@apis/AuctionAPI";
 
 // 입찰 단위
 const bidUnit = (currentPrice) => {
@@ -46,11 +47,10 @@ export default function AuctionDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
-  const [isWatched, setIsWatched] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
 
   const [showCopyMessage, setShowCopyMessage] = useState(false);
   const [showBidSuccess, setShowBidSuccess] = useState(false);
-  const [showBuyNowSuccess, setShowBuyNowSuccess] = useState(false);
 
   const [inValid, setInValid] = useState({});
   const [highestBidderNickname, setHighestBidderNickname] = useState("없음");
@@ -58,6 +58,8 @@ export default function AuctionDetailPage() {
 
   const socketRef = useRef(null);
   const userIdRef = useRef(null);
+
+  const navigate = useNavigate();
 
   // 계정 정보 불러오기
   useEffect(() => {
@@ -80,8 +82,10 @@ export default function AuctionDetailPage() {
   const fetchInitialData = useCallback(async () => {
     try {
       const auctionDetail = await getAuctionDetail(auctionId);
+
       if (auctionDetail.data) {
         setAuction(auctionDetail.data);
+        setIsFavorite(auctionDetail.data.isFavorite);
       }
 
       if (auctionDetail.data.transaction) {
@@ -146,9 +150,7 @@ export default function AuctionDetailPage() {
           }
         };
 
-        socketRef.current.onerror = (e) => {
-          console.error(e);
-        };
+        socketRef.current.onerror = (e) => {};
       } catch (err) {
         console.error("웹소켓 설정 중 에러: ", err);
 
@@ -307,17 +309,6 @@ export default function AuctionDetailPage() {
     setBidAmount(bidData.length === 0 ? auction.currentPrice : auction.currentPrice + bidUnit(auction.currentPrice));
   }, [auction?.startPrice, auction?.currentPrice, bidData.length]);
 
-  // 즉시 구매 성공 시 초기화
-  useEffect(() => {
-    if (transaction && transaction.status === "COMPLETED" && transaction.userId === user.info.id) {
-      setShowBuyNowSuccess(true);
-      setShowBidSuccess(false);
-    } else {
-      setShowBuyNowSuccess(false);
-      setShowBidSuccess(false);
-    }
-  }, [transaction, user.info.id]);
-
   // 입찰 금액 유효성 검사
   const validateBidAmount = () => {
     if (!auction?.startPrice || !auction?.currentPrice) return false;
@@ -430,12 +421,18 @@ export default function AuctionDetailPage() {
   };
 
   // 관심 등록 버튼 클릭 시 관심 등록 상태 업데이트
-  const toggleWatch = () => {
-    setIsWatched(!isWatched);
+  const handleFavorite = () => {
+    if (!user.authenticated) {
+      return navigate("/auth/login");
+    }
+
+    setIsFavorite(!isFavorite);
     setAuction((prev) => ({
       ...prev,
-      watchCount: prev.watchCount + (isWatched ? -1 : 1),
+      favoriteCount: prev.favoriteCount + (isFavorite ? -1 : 1),
     }));
+
+    toggleFavorite(auctionId);
   };
 
   // 공유 버튼 클릭 시 링크 복사
@@ -547,8 +544,8 @@ export default function AuctionDetailPage() {
                     <span className="text-gray-500">{auction.bidCount} 입찰</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Eye className={`w-5 h-5 ${isWatched ? "text-red-500" : "text-gray-500"}`} />
-                    <span className={isWatched ? "text-red-500" : "text-gray-500"}>{auction.watchCount} 관심</span>
+                    <Eye className={`w-5 h-5 ${isFavorite ? "text-red-500" : "text-gray-500"}`} />
+                    <span className={isFavorite ? "text-red-500" : "text-gray-500"}>{auction.favoriteCount} 관심</span>
                   </div>
                 </div>
               </div>
@@ -561,8 +558,8 @@ export default function AuctionDetailPage() {
                 <Link to="/auth/login">
                   <BlurOverlay message="로그인 후 이용할 수 있습니다." />
                 </Link>
-              ) : showBuyNowSuccess ? (
-                <BlurOverlay message="즉시 구매가 완료되었습니다." className="text-blue-600" />
+              ) : transaction && transaction.status === "COMPLETED" && transaction.userId === user.info.id ? (
+                <BlurOverlay message="축하합니다! 낙찰되었습니다." className="text-blue-600" />
               ) : auction.auctionLeftTime <= 0 || (transaction && transaction.userId !== user.info.id) ? (
                 <BlurOverlay message="종료된 경매입니다." className="text-gray-700" />
               ) : (
@@ -593,12 +590,12 @@ export default function AuctionDetailPage() {
             {/* 관심/공유 버튼 */}
             <div className="grid grid-cols-2 gap-4">
               <button
-                onClick={toggleWatch}
+                onClick={handleFavorite}
                 className={`flex items-center justify-center gap-2 py-2 rounded-lg border transition-all duration-200
-                        ${isWatched ? "text-red-500 border-red-500" : "text-gray-600 border-gray-200 hover:text-red-500 hover:border-red-500"}`}
+                        ${isFavorite ? "text-red-500 border-red-500" : "text-gray-600 border-gray-200 hover:text-red-500 hover:border-red-500"}`}
               >
-                <Heart className={`w-5 h-5 transition-transform duration-200 ${isWatched ? "fill-current scale-110" : "scale-100"}`} />
-                <span>{isWatched ? "관심 등록됨" : "관심 등록"}</span>
+                <Heart className={`w-5 h-5 transition-transform duration-200 ${isFavorite ? "fill-current scale-110" : "scale-100"}`} />
+                <span>{isFavorite ? "관심 등록됨" : "관심 등록"}</span>
               </button>
               <div className="relative">
                 <button onClick={handleShare} className="w-full flex items-center justify-center gap-2 py-2 text-gray-600 hover:text-blue-500 rounded-lg border border-gray-200 hover:border-blue-500 transition-colors">
@@ -608,7 +605,7 @@ export default function AuctionDetailPage() {
                 <div
                   className={`absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-3 py-1 rounded text-sm whitespace-nowrap
                           transition-all duration-300 transform
-                          ${showCopyMessage ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"}`}
+                          ${showCopyMessage ? "opacity-100 translate-y-0 z-10" : "opacity-0 translate-y-2 pointer-events-none"}`}
                 >
                   링크가 복사되었습니다
                   <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-800 rotate-45"></div>

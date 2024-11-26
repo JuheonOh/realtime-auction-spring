@@ -2,7 +2,7 @@ import Layout from "@layouts/Layout";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 
 import ScrollToTop from "@components/common/navigation/ScrollToTop";
-import Private from "@config/Private";
+import Private from "@layouts/Private";
 import AuctionCreatePage from "@pages/auctions/AuctionCreatePage";
 import AuctionListPage from "@pages/auctions/AuctionListPage";
 import ContactPage from "@pages/common/ContactPage";
@@ -22,7 +22,7 @@ export default function Router() {
         <Route element={<Private />}>
           <Route element={<Layout />}>
             <Route path="/user/profile" element={<ProfilePage />} />
-            <Route path="/auctions/create" element={<AuctionCreatePage />} />
+            <Route path="/auctions/new" element={<AuctionCreatePage />} />
           </Route>
         </Route>
 

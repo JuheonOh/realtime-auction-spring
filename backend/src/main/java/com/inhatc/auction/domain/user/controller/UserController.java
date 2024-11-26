@@ -1,7 +1,5 @@
 package com.inhatc.auction.domain.user.controller;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,12 +32,5 @@ public class UserController {
         UserResponseDTO userResponseDTO = this.userService.findById(id);
 
         return ResponseEntity.status(HttpStatus.OK).body(userResponseDTO);
-    }
-
-    @GetMapping("/all")
-    public ResponseEntity<?> findAllUser() {
-        List<UserResponseDTO> userResponseDTOs = this.userService.findAll();
-
-        return ResponseEntity.status(HttpStatus.OK).body(userResponseDTOs);
     }
 }

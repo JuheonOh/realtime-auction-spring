@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.inhatc.auction.domain.auction.dto.request.AuctionRequestDTO;
+import com.inhatc.auction.domain.auction.dto.response.AuctionDetailResponseDTO;
 import com.inhatc.auction.domain.auction.service.AuctionService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,8 +41,10 @@ public class AuctionController {
 
     // 경매 상세 조회
     @GetMapping("/{auctionId}")
-    public ResponseEntity<?> getAuctionDetail(@PathVariable("auctionId") Long auctionId) {
-        return ResponseEntity.status(HttpStatus.OK).body(auctionService.getAuctionDetail(auctionId));
+    public ResponseEntity<?> getAuctionDetail(HttpServletRequest request,
+            @PathVariable("auctionId") Long auctionId) {
+        AuctionDetailResponseDTO auctionDetailResponseDTO = auctionService.getAuctionDetail(request, auctionId);
+        return ResponseEntity.status(HttpStatus.OK).body(auctionDetailResponseDTO);
     }
 
     // 경매 생성
@@ -59,6 +62,14 @@ public class AuctionController {
     @PostMapping("/{auctionId}/buy-now")
     public ResponseEntity<?> buyNowAuction(HttpServletRequest request, @PathVariable("auctionId") Long auctionId) {
         auctionService.buyNowAuction(request, auctionId);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    // 경매 관심 등록
+    @PostMapping("/{auctionId}/favorites")
+    public ResponseEntity<?> favoriteAuction(HttpServletRequest request, @PathVariable("auctionId") Long auctionId) {
+        auctionService.favoriteAuction(request, auctionId);
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }

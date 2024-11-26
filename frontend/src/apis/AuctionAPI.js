@@ -40,6 +40,16 @@ export const buyNowAuction = async (auctionId) => {
   }
 };
 
+// 관심 경매 추가/삭제
+export const toggleFavorite = async (auctionId) => {
+  try {
+    const response = await AuctionApi.post(`/api/auctions/${auctionId}/favorites`);
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
 //////////////////////////////////////
 // 인증이 필요하지 않은 API
 // 경매 목록 조회
@@ -65,7 +75,7 @@ export const getFeaturedAuctions = async () => {
 // 경매 상세 조회
 export const getAuctionDetail = async (auctionId) => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/auctions/${auctionId}`);
+    const response = await AuctionApi.get(`/api/auctions/${auctionId}`);
     return response;
   } catch (error) {
     throw error;

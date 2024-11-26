@@ -63,7 +63,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOriginPatterns(List.of("*")); // 모든 출처 패턴 허용
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS")); // 모든 메소드 허용
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")); // 모든 메소드 허용
         configuration
                 .setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "REFRESH_TOKEN"));
         configuration.setExposedHeaders(Arrays.asList("Authorization", "REFRESH_TOKEN", "Set-Cookie")); // 노출 헤더

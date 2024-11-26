@@ -1,5 +1,6 @@
 import { logout } from "@apis/AuthAPI";
 import { LOGOUT } from "@data/redux/store/User";
+import { clearCookie } from "@data/storage/Cookie";
 import { Bell, Clock, DollarSign, Lock, Mail, Phone, Settings, User } from "lucide-react";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -23,9 +24,10 @@ export default function ProfilePage() {
     { id: 2, name: "Luxury Handbag", currentBid: 2500000, endDate: "2023-06-30" },
   ];
 
-  const handleLogout = async () => {
-    await logout();
+  const handleLogout = () => {
+    logout();
     dispatch(LOGOUT());
+    clearCookie();
     navigate("/");
   };
 
@@ -71,6 +73,10 @@ export default function ProfilePage() {
               <div>
                 <h3 className="text-xl font-semibold mb-4">프로필 정보</h3>
                 <div className="space-y-4">
+                  <div className="flex items-center">
+                    <User className="w-5 h-5 mr-2 text-gray-500" />
+                    <span>회원 번호 : {user.id}</span>
+                  </div>
                   <div className="flex items-center">
                     <User className="w-5 h-5 mr-2 text-gray-500" />
                     <span>{user.name}</span>

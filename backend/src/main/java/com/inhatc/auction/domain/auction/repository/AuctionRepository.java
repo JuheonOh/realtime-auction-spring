@@ -13,6 +13,7 @@ import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.global.constant.AuctionStatus;
 
 public interface AuctionRepository extends JpaRepository<Auction, Long> {
+
     // 현재 시간보다 경매 종료 시간 + minutes분 이후인 경매 조회
     @Query("SELECT a FROM Auction a WHERE DATEADD(MINUTE, :minutes, a.auctionEndTime) > NOW() ORDER BY a.auctionStartTime DESC")
     List<Auction> findAllByAuctionEndTimeAfter(@Param("minutes") Integer minutes);
@@ -51,4 +52,11 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
     List<Auction> findByAuctionEndTimeBeforeAndStatus(@Param("auctionEndTime") LocalDateTime auctionEndTime,
             @Param("status") AuctionStatus status);
 
+    // 종료 시간 사이에 있는 경매 조회
+    List<Auction> findByAuctionEndTimeBetweenAndStatus(@Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("status") AuctionStatus status);
+
+    // 종료 시간 이후인 경매 조회
+    List<Auction> findByAuctionEndTimeAfterAndStatus(@Param("auctionEndTime") LocalDateTime auctionEndTime, @Param("status") AuctionStatus status);
 }
