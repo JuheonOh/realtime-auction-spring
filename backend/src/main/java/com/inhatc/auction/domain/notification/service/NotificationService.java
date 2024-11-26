@@ -29,7 +29,8 @@ public class NotificationService {
         String accessToken = jwtTokenProvider.getTokenFromRequest(request);
         Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
 
-        List<Notification> notifications = notificationRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId);
+        List<Notification> notifications = notificationRepository
+                .findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId);
         return notifications.stream().<NotificationResponseDTO>map(notification -> {
             LocalDateTime createdAt = notification.getCreatedAt();
             String time = TimeUtils.getRelativeTimeString(createdAt);

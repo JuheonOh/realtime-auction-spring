@@ -80,7 +80,7 @@ export default function NotificationComponent() {
         }
 
         // SSE 연결
-        eventSource = getNotificationStream(user.info.id);
+        eventSource = getNotificationStream(user.accessToken, user.info.id);
 
         // 연결 성공 이벤트
         eventSource.addEventListener("connect", (e) => {
@@ -120,7 +120,7 @@ export default function NotificationComponent() {
     };
 
     fetchNotificationsStream();
-  }, [user.info.id]);
+  }, [user.info.id, user.accessToken]);
 
   // 외부 클릭 이벤트 처리
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@utils/constant";
+import { EventSourcePolyfill, NativeEventSource } from "event-source-polyfill";
 import httpClientManager from "./HttpClientManager";
 
 // API 인스턴스 생성
@@ -22,9 +23,14 @@ export const getNotifications = async () => {
   }
 };
 
-export const getNotificationStream = (userId) => {
+export const getNotificationStream = (token, userId) => {
   try {
-    const eventSource = new EventSource(`${API_BASE_URL}/api/users/${userId}/notifications/stream`);
+    const EventSource = EventSourcePolyfill || NativeEventSource;
+    const eventSource = new EventSource(`${API_BASE_URL}/api/users/${userId}/notifications/stream`, {
+      headers: {
+        Authorization: httpClientManager.getAuthHeader(token),
+      }
+    });
     return eventSource;
   } catch (error) {
     throw error;

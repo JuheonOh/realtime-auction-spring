@@ -37,8 +37,8 @@ public class NotificationController {
     }
 
     @GetMapping(value = "/users/{userId}/notifications/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter getNotificationStream(@PathVariable("userId") Long userId) {
-        return sseNotificationService.subscribe(userId);
+    public SseEmitter getNotificationStream(HttpServletRequest request, @PathVariable("userId") Long userId) {
+        return sseNotificationService.subscribe(request, userId);
     }
 
     @PatchMapping("/users/notifications/all")
@@ -48,13 +48,15 @@ public class NotificationController {
     }
 
     @PatchMapping("/users/notifications")
-    public ResponseEntity<?> patchNotification(HttpServletRequest request, @RequestBody NotificationRequestDTO notificationRequestDTO) {
+    public ResponseEntity<?> patchNotification(HttpServletRequest request,
+            @RequestBody NotificationRequestDTO notificationRequestDTO) {
         notificationService.markAsRead(request, notificationRequestDTO.getNotificationId());
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/users/notifications")
-    public ResponseEntity<?> deleteNotification(HttpServletRequest request, @RequestBody NotificationRequestDTO notificationRequestDTO) {
+    public ResponseEntity<?> deleteNotification(HttpServletRequest request,
+            @RequestBody NotificationRequestDTO notificationRequestDTO) {
         notificationService.deleteNotification(request, notificationRequestDTO.getNotificationId());
         return ResponseEntity.ok().build();
     }
