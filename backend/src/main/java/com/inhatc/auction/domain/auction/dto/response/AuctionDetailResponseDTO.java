@@ -4,10 +4,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.inhatc.auction.domain.auction.entity.AuctionStatus;
 import com.inhatc.auction.domain.bid.dto.response.BidResponseDTO;
 import com.inhatc.auction.domain.image.dto.response.ImageResponseDTO;
 import com.inhatc.auction.domain.transaction.dto.response.TransactionResponseDTO;
-import com.inhatc.auction.global.constant.AuctionStatus;
 
 import lombok.Builder;
 import lombok.Getter;

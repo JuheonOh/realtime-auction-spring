@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.bid.websocket.handler;
+package com.inhatc.auction.domain.bid.websocket;
 
 import java.io.IOException;
 import java.net.URI;
@@ -22,22 +22,22 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inhatc.auction.domain.auction.entity.Auction;
+import com.inhatc.auction.domain.auction.entity.AuctionStatus;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
+import com.inhatc.auction.domain.bid.dto.request.WebSocketRequestDTO;
+import com.inhatc.auction.domain.bid.dto.response.WebSocketResponseDTO;
 import com.inhatc.auction.domain.bid.entity.RedisBid;
 import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
-import com.inhatc.auction.domain.bid.websocket.dto.WebSocketRequestDTO;
-import com.inhatc.auction.domain.bid.websocket.dto.WebSocketResponseDTO;
 import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
 import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
 import com.inhatc.auction.domain.notification.repository.NotificationRepository;
 import com.inhatc.auction.domain.notification.service.SseNotificationService;
 import com.inhatc.auction.domain.transaction.entity.Transaction;
+import com.inhatc.auction.domain.transaction.entity.TransactionStatus;
 import com.inhatc.auction.domain.transaction.repository.TransactionRepository;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
-import com.inhatc.auction.global.constant.AuctionStatus;
-import com.inhatc.auction.global.constant.TransactionStatus;
 import com.inhatc.auction.global.jwt.JwtTokenProvider;
 import com.inhatc.auction.global.utils.TimeUtils;
 

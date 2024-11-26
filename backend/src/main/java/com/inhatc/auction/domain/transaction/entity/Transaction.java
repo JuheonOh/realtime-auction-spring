@@ -3,7 +3,6 @@ package com.inhatc.auction.domain.transaction.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.user.entity.User;
-import com.inhatc.auction.global.constant.TransactionStatus;
 import com.inhatc.auction.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.Entity;

@@ -7,11 +7,11 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
+import com.inhatc.auction.domain.auction.entity.AuctionStatus;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.lifecycle.entity.ServerLifecycle;
 import com.inhatc.auction.domain.lifecycle.repository.ServerLifecycleRepository;
 import com.inhatc.auction.domain.lifecycle.util.FileUtils;
-import com.inhatc.auction.global.constant.AuctionStatus;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

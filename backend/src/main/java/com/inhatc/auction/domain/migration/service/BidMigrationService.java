@@ -1,4 +1,4 @@
-package com.inhatc.auction.domain.bid.migration.service;
+package com.inhatc.auction.domain.migration.service;
 
 import java.util.List;
 

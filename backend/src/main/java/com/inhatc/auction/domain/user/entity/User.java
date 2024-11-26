@@ -6,7 +6,6 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.bid.entity.Bid;
-import com.inhatc.auction.global.constant.UserRole;
 import com.inhatc.auction.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.Column;

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
+import com.inhatc.auction.domain.auction.entity.AuctionStatus;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.favorite.entity.Favorite;
 import com.inhatc.auction.domain.favorite.repository.FavoriteRepository;
@@ -20,7 +21,6 @@ import com.inhatc.auction.domain.notification.dto.response.NotificationResponseD
 import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
 import com.inhatc.auction.domain.notification.repository.NotificationRepository;
-import com.inhatc.auction.global.constant.AuctionStatus;
 import com.inhatc.auction.global.utils.TimeUtils;
 
 import jakarta.annotation.PreDestroy;
@@ -110,14 +110,16 @@ public class SseNotificationService {
         LocalDateTime oneHourLater = LocalDateTime.now().plusHours(1);
 
         // 경매 종료시간이 1시간 후인 경매 조회
-        List<Auction> endingSoonAuctions = auctionRepository.findByAuctionEndTimeAfterAndStatus(oneHourLater, AuctionStatus.ACTIVE);
+        List<Auction> endingSoonAuctions = auctionRepository.findByAuctionEndTimeAfterAndStatus(oneHourLater,
+                AuctionStatus.ACTIVE);
 
         for (Auction auction : endingSoonAuctions) {
             List<Favorite> favorites = favoriteRepository.findByAuction(auction);
 
             for (Favorite favorite : favorites) {
                 // 이미 알림을 보냈는지 확인
-                if (notificationRepository.existsByUserAndAuctionIdAndType(favorite.getUser(), auction.getId(), NotificationType.REMINDER)) {
+                if (notificationRepository.existsByUserAndAuctionIdAndType(favorite.getUser(), auction.getId(),
+                        NotificationType.REMINDER)) {
                     continue;
                 }
 

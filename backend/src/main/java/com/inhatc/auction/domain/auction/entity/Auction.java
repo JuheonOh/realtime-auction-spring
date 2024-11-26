@@ -8,7 +8,6 @@ import com.inhatc.auction.domain.bid.entity.Bid;
 import com.inhatc.auction.domain.category.entity.Category;
 import com.inhatc.auction.domain.image.entity.Image;
 import com.inhatc.auction.domain.user.entity.User;
-import com.inhatc.auction.global.constant.AuctionStatus;
 import com.inhatc.auction.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.CascadeType;

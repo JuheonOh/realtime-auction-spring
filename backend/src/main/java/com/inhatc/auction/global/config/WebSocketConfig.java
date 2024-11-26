@@ -6,7 +6,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
-import com.inhatc.auction.domain.bid.websocket.handler.WebSocketHandler;
+import com.inhatc.auction.domain.bid.websocket.WebSocketHandler;
 
 import lombok.RequiredArgsConstructor;
 
