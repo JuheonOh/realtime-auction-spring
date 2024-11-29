@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.deleteNotification = exports.patchNotification = exports.patchNotificationAll = exports.getNotificationStream = exports.getNotifications = exports.getUser = void 0;
+exports.deleteNotification = exports.deleteNotificationAll = exports.patchNotification = exports.patchNotificationAll = exports.getNotificationStream = exports.getUser = void 0;
 
 var _constant = require("@utils/constant");
 
@@ -45,35 +45,6 @@ var getUser = function getUser() {
 
 exports.getUser = getUser;
 
-var getNotifications = function getNotifications() {
-  var response;
-  return regeneratorRuntime.async(function getNotifications$(_context2) {
-    while (1) {
-      switch (_context2.prev = _context2.next) {
-        case 0:
-          _context2.prev = 0;
-          _context2.next = 3;
-          return regeneratorRuntime.awrap(UserApi.get("/api/users/notifications"));
-
-        case 3:
-          response = _context2.sent;
-          return _context2.abrupt("return", response);
-
-        case 7:
-          _context2.prev = 7;
-          _context2.t0 = _context2["catch"](0);
-          throw _context2.t0;
-
-        case 10:
-        case "end":
-          return _context2.stop();
-      }
-    }
-  }, null, null, [[0, 7]]);
-};
-
-exports.getNotifications = getNotifications;
-
 var getNotificationStream = function getNotificationStream(token, userId) {
   try {
     var EventSource = _eventSourcePolyfill.EventSourcePolyfill || _eventSourcePolyfill.NativeEventSource;
@@ -92,13 +63,44 @@ exports.getNotificationStream = getNotificationStream;
 
 var patchNotificationAll = function patchNotificationAll() {
   var response;
-  return regeneratorRuntime.async(function patchNotificationAll$(_context3) {
+  return regeneratorRuntime.async(function patchNotificationAll$(_context2) {
+    while (1) {
+      switch (_context2.prev = _context2.next) {
+        case 0:
+          _context2.prev = 0;
+          _context2.next = 3;
+          return regeneratorRuntime.awrap(UserApi.patch("/api/users/notifications/all"));
+
+        case 3:
+          response = _context2.sent;
+          return _context2.abrupt("return", response);
+
+        case 7:
+          _context2.prev = 7;
+          _context2.t0 = _context2["catch"](0);
+          throw _context2.t0;
+
+        case 10:
+        case "end":
+          return _context2.stop();
+      }
+    }
+  }, null, null, [[0, 7]]);
+};
+
+exports.patchNotificationAll = patchNotificationAll;
+
+var patchNotification = function patchNotification(notificationId) {
+  var response;
+  return regeneratorRuntime.async(function patchNotification$(_context3) {
     while (1) {
       switch (_context3.prev = _context3.next) {
         case 0:
           _context3.prev = 0;
           _context3.next = 3;
-          return regeneratorRuntime.awrap(UserApi.patch("/api/users/notifications/all"));
+          return regeneratorRuntime.awrap(UserApi.patch("/api/users/notifications", {
+            notificationId: notificationId
+          }));
 
         case 3:
           response = _context3.sent;
@@ -117,19 +119,17 @@ var patchNotificationAll = function patchNotificationAll() {
   }, null, null, [[0, 7]]);
 };
 
-exports.patchNotificationAll = patchNotificationAll;
+exports.patchNotification = patchNotification;
 
-var patchNotification = function patchNotification(notificationId) {
+var deleteNotificationAll = function deleteNotificationAll() {
   var response;
-  return regeneratorRuntime.async(function patchNotification$(_context4) {
+  return regeneratorRuntime.async(function deleteNotificationAll$(_context4) {
     while (1) {
       switch (_context4.prev = _context4.next) {
         case 0:
           _context4.prev = 0;
           _context4.next = 3;
-          return regeneratorRuntime.awrap(UserApi.patch("/api/users/notifications", {
-            notificationId: notificationId
-          }));
+          return regeneratorRuntime.awrap(UserApi["delete"]("/api/users/notifications/all"));
 
         case 3:
           response = _context4.sent;
@@ -148,7 +148,7 @@ var patchNotification = function patchNotification(notificationId) {
   }, null, null, [[0, 7]]);
 };
 
-exports.patchNotification = patchNotification;
+exports.deleteNotificationAll = deleteNotificationAll;
 
 var deleteNotification = function deleteNotification(notificationId) {
   var response;

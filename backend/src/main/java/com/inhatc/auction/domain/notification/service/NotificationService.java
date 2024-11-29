@@ -2,12 +2,21 @@ package com.inhatc.auction.domain.notification.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.inhatc.auction.domain.auction.entity.Auction;
+import com.inhatc.auction.domain.auction.repository.AuctionRepository;
+import com.inhatc.auction.domain.bid.entity.RedisBid;
+import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
+import com.inhatc.auction.domain.notification.dto.response.AuctionInfoDTO;
+import com.inhatc.auction.domain.notification.dto.response.MyBidInfoDTO;
 import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
+import com.inhatc.auction.domain.notification.dto.response.PreviousBidInfoDTO;
 import com.inhatc.auction.domain.notification.entity.Notification;
+import com.inhatc.auction.domain.notification.entity.NotificationType;
 import com.inhatc.auction.domain.notification.repository.NotificationRepository;
 import com.inhatc.auction.global.jwt.JwtTokenProvider;
 import com.inhatc.auction.global.utils.TimeUtils;
@@ -23,6 +32,8 @@ public class NotificationService {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final NotificationRepository notificationRepository;
+    private final AuctionRepository auctionRepository;
+    private final RedisBidRepository redisBidRepository;
 
     // 사용자의 알림 목록 조회
     public List<NotificationResponseDTO> getNotifications(HttpServletRequest request) {
@@ -35,13 +46,158 @@ public class NotificationService {
             LocalDateTime createdAt = notification.getCreatedAt();
             String time = TimeUtils.getRelativeTimeString(createdAt);
 
-            return NotificationResponseDTO.builder()
+            Long auctionId = notification.getAuctionId();
+            Optional<Auction> auctionOptional = auctionRepository.findById(auctionId);
+
+            NotificationType type = notification.getType();
+            if (type == NotificationType.BID) {
+                // 이전 최고 입찰 정보와 현재 최고 입찰 정보 조회 (이전 최고 입찰자, 현재 입찰자)
+                List<RedisBid> redisBidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auctionId);
+                Boolean isPreviousBidPresent = redisBidList.size() >= 2; // 이전 최고 입찰 정보가 있는 경우
+
+                // 경매 정보가 있고 입찰 정보가 있는 경우
+                if (auctionOptional.isPresent() && redisBidList.size() > 0) {
+                    Auction auction = auctionOptional.get();
+
+                    // 이전 최고 입찰 정보가 있는 경우
+                    if (isPreviousBidPresent) {
+                        RedisBid currentBid = redisBidList.get(0);
+                        RedisBid previousBid = redisBidList.get(1);
+
+                        NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+                                .id(notification.getId())
+                                .type(notification.getType())
+                                .isRead(notification.getIsRead())
+                                .time(time)
+                                .auctionInfo(AuctionInfoDTO.builder()
+                                        .id(auction.getId())
+                                        .title(auction.getTitle())
+                                        .currentPrice(auction.getCurrentPrice())
+                                        .filePath(auction.getImages().get(0).getFilePath())
+                                        .fileName(auction.getImages().get(0).getFileName())
+                                        .auctionEndTime(auction.getAuctionEndTime())
+                                        .build())
+                                .myBidInfo(MyBidInfoDTO.builder()
+                                        .bidAmount(currentBid.getBidAmount())
+                                        .build())
+                                .previousBidInfo(PreviousBidInfoDTO.builder()
+                                        .bidAmount(previousBid.getBidAmount())
+                                        .build())
+                                .build();
+
+                        return notificationResponseDTO;
+                    } else {
+                        // 이전 최고 입찰 정보가 없는 경우
+                        RedisBid currentBid = redisBidList.get(0);
+
+                        NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+                                .id(notification.getId())
+                                .type(notification.getType())
+                                .isRead(notification.getIsRead())
+                                .time(time)
+                                .auctionInfo(AuctionInfoDTO.builder()
+                                        .id(auction.getId())
+                                        .title(auction.getTitle())
+                                        .currentPrice(auction.getCurrentPrice())
+                                        .filePath(auction.getImages().get(0).getFilePath())
+                                        .fileName(auction.getImages().get(0).getFileName())
+                                        .auctionEndTime(auction.getAuctionEndTime())
+                                        .build())
+                                .myBidInfo(MyBidInfoDTO.builder()
+                                        .bidAmount(currentBid.getBidAmount())
+                                        .build())
+                                .build();
+
+                        return notificationResponseDTO;
+                    }
+                }
+
+            } else if (type == NotificationType.OUTBID) {
+                List<RedisBid> allBidsList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auctionId);
+                List<RedisBid> myBidsList = redisBidRepository.findByAuctionIdAndUserIdOrderByBidAmountDesc(auctionId,
+                        userId);
+
+                if (auctionOptional.isPresent() && !myBidsList.isEmpty() && !allBidsList.isEmpty()) {
+                    Auction auction = auctionOptional.get();
+                    RedisBid myBid = myBidsList.get(0); // 내 입찰가
+
+                    NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+                            .id(notification.getId())
+                            .type(notification.getType())
+                            .isRead(notification.getIsRead())
+                            .time(time)
+                            .auctionInfo(AuctionInfoDTO.builder()
+                                    .id(auction.getId())
+                                    .title(auction.getTitle())
+                                    .currentPrice(auction.getCurrentPrice())
+                                    .filePath(auction.getImages().get(0).getFilePath())
+                                    .fileName(auction.getImages().get(0).getFileName())
+                                    .auctionEndTime(auction.getAuctionEndTime())
+                                    .build())
+                            .myBidInfo(MyBidInfoDTO.builder()
+                                    .bidAmount(myBid.getBidAmount())
+                                    .build())
+                            .build();
+
+                    return notificationResponseDTO;
+                }
+            } else if (type == NotificationType.WIN) {
+                if (auctionOptional.isPresent()) {
+                    Auction auction = auctionOptional.get();
+
+                    NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+                            .id(notification.getId())
+                            .type(notification.getType())
+                            .isRead(notification.getIsRead())
+                            .time(time)
+                            .auctionInfo(AuctionInfoDTO.builder()
+                                    .id(auction.getId())
+                                    .title(auction.getTitle())
+                                    .successfulPrice(auction.getCurrentPrice())
+                                    .filePath(auction.getImages().get(0).getFilePath())
+                                    .fileName(auction.getImages().get(0).getFileName())
+                                    .build())
+                            .build();
+
+                    return notificationResponseDTO;
+                }
+            } else if (type == NotificationType.REMINDER) {
+                if (auctionOptional.isPresent()) {
+                    Auction auction = auctionOptional.get();
+
+                    NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+                            .id(notification.getId())
+                            .type(notification.getType())
+                            .isRead(notification.getIsRead())
+                            .time(time)
+                            .auctionInfo(AuctionInfoDTO.builder()
+                                    .id(auction.getId())
+                                    .title(auction.getTitle())
+                                    .currentPrice(auction.getCurrentPrice())
+                                    .filePath(auction.getImages().get(0).getFilePath())
+                                    .fileName(auction.getImages().get(0).getFileName())
+                                    .auctionEndTime(auction.getAuctionEndTime())
+                                    .build())
+                            .build();
+
+                    return notificationResponseDTO;
+                }
+            }
+
+            NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
                     .id(notification.getId())
                     .type(notification.getType())
                     .isRead(notification.getIsRead())
                     .time(time)
+                    .auctionInfo(AuctionInfoDTO.builder()
+                            .title("삭제된 경매입니다.")
+                            .build())
                     .build();
+
+            return notificationResponseDTO;
+
         }).collect(Collectors.toList());
+
     }
 
     // 모두 읽음 처리
@@ -66,6 +222,19 @@ public class NotificationService {
             notification.markAsRead();
             notificationRepository.save(notification);
         });
+    }
+
+    // 모든 알림 삭제 처리
+    public void deleteNotificationAll(HttpServletRequest request) {
+        String accessToken = jwtTokenProvider.getTokenFromRequest(request);
+        Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+
+        List<Notification> notifications = notificationRepository.findByUserIdAndIsDeletedFalse(userId);
+        notifications.forEach(notification -> {
+            notification.markAsDeleted();
+        });
+
+        notificationRepository.saveAll(notifications);
     }
 
     // 알림 삭제 처리

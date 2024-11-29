@@ -2,7 +2,6 @@ package com.inhatc.auction.domain.bid.websocket;
 
 import java.io.IOException;
 import java.net.URI;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -28,7 +28,10 @@ import com.inhatc.auction.domain.bid.dto.request.WebSocketRequestDTO;
 import com.inhatc.auction.domain.bid.dto.response.WebSocketResponseDTO;
 import com.inhatc.auction.domain.bid.entity.RedisBid;
 import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
+import com.inhatc.auction.domain.notification.dto.response.AuctionInfoDTO;
+import com.inhatc.auction.domain.notification.dto.response.MyBidInfoDTO;
 import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
+import com.inhatc.auction.domain.notification.dto.response.PreviousBidInfoDTO;
 import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
 import com.inhatc.auction.domain.notification.repository.NotificationRepository;
@@ -42,7 +45,6 @@ import com.inhatc.auction.global.jwt.JwtTokenProvider;
 import com.inhatc.auction.global.utils.TimeUtils;
 
 import io.jsonwebtoken.ExpiredJwtException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
@@ -111,7 +113,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         // 경매 조회
-        Auction auction = auctionRepository.findById(auctionId).orElse(null);
+        Auction auction = auctionRepository.findByIdWithImages(auctionId).orElse(null);
         if (auction == null) {
             sendToOne(session, "error", HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다.");
             return;
@@ -139,7 +141,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
             // 최고 입찰자가 없는 경우
             if (highestBid == null) {
-                // 시작가와 같거나 높아야.ham
+                // 시작가와 같거나 높아야 함
                 if (bidAmount < auction.getStartPrice()) {
                     sendToOne(session, "error", HttpStatus.BAD_REQUEST, "입찰 금액이 시작가와 같거나 높아야 합니다");
                     return;
@@ -172,27 +174,74 @@ public class WebSocketHandler extends TextWebSocketHandler {
             auction.updateCurrentPrice(bidAmount);
             this.auctionRepository.save(auction);
 
-            // 현재 입찰자에게 BID 알림
+            // 현재 입찰자에게 BID 알림 전송
+
+            // 중복 알림 조회
+            Optional<Notification> duplicateBidNotificationOptional = this.notificationRepository
+                    .findDuplicatedNotification(userId, NotificationType.BID, auctionId);
+
             // BID 알림 생성 (현재 입찰자에게)
-            Notification bidNotification = Notification.builder()
+            Notification bidNotification;
+
+            // 중복 알림이 있는 경우 삭제
+            if (duplicateBidNotificationOptional.isPresent()) {
+                Notification duplicateBidNotification = duplicateBidNotificationOptional.get();
+                duplicateBidNotification.markAsDeleted();
+                this.notificationRepository.save(duplicateBidNotification);
+            }
+
+            bidNotification = Notification.builder()
                     .type(NotificationType.BID)
                     .user(user)
                     .auctionId(auctionId)
                     .build();
 
+            // 알림 저장
             this.notificationRepository.save(bidNotification);
 
+            // 해당 경매에 이전 알림 중 OUTBID 알림이 있는 경우 삭제
+            Optional<Notification> duplicateOutbidNotificationOptional = this.notificationRepository
+                    .findDuplicatedNotification(userId, NotificationType.OUTBID, auctionId);
+
+            // 중복 알림이 있는 경우 삭제
+            if (duplicateOutbidNotificationOptional.isPresent()) {
+                duplicateOutbidNotificationOptional.get().markAsDeleted();
+                this.notificationRepository.save(duplicateOutbidNotificationOptional.get());
+            }
+
             // BID 알림 전송
+            Long previousBidAmount = highestBid != null ? highestBid.getBidAmount() : null;
+            PreviousBidInfoDTO previousBidInfoDTO = null;
+
+            // 이전 최고 입찰자가 있는 경우
+            if (previousBidAmount != null) {
+                previousBidInfoDTO = PreviousBidInfoDTO.builder()
+                        .bidAmount(previousBidAmount)
+                        .build();
+            }
+
             NotificationResponseDTO bidDTO = NotificationResponseDTO.builder()
                     .id(bidNotification.getId())
                     .type(NotificationType.BID)
                     .isRead(bidNotification.getIsRead())
                     .time(TimeUtils.getRelativeTimeString(bidNotification.getCreatedAt()))
+                    .auctionInfo(AuctionInfoDTO.builder()
+                            .id(auctionId)
+                            .title(auction.getTitle())
+                            .currentPrice(auction.getCurrentPrice())
+                            .filePath(auction.getImages().get(0).getFilePath())
+                            .fileName(auction.getImages().get(0).getFileName())
+                            .auctionEndTime(auction.getAuctionEndTime())
+                            .build())
+                    .myBidInfo(MyBidInfoDTO.builder()
+                            .bidAmount(bidAmount)
+                            .build())
+                    .previousBidInfo(previousBidInfoDTO)
                     .build();
 
             sseNotificationService.sendNotification(userId, bidDTO);
 
-            // 이전 최고 입찰자가 있는 경우 OUTBID 알림
+            // 이전 최고 입찰자가 있는 경우 이전 최고 입찰자에게 OUTBID 알림
             if (highestBid != null) {
                 Long previousBidderId = highestBid.getUserId();
                 User previousBidder = userRepository.findById(previousBidderId).orElse(null);
@@ -204,7 +253,23 @@ public class WebSocketHandler extends TextWebSocketHandler {
                         .user(previousBidder)
                         .build();
 
+                // 중복 알림 조회
+                Optional<Notification> duplicateOutbidNotification = this.notificationRepository
+                        .findDuplicatedNotification(previousBidderId, NotificationType.OUTBID, auctionId);
+
+                // 중복 알림이 있는 경우 삭제
+                if (duplicateOutbidNotification.isPresent()) {
+                    duplicateOutbidNotification.get().markAsDeleted();
+                    this.notificationRepository.save(duplicateOutbidNotification.get());
+                }
+
+                // 알림 저장
                 this.notificationRepository.save(outbidNotification);
+
+                // 마지막 입찰 정보
+                MyBidInfoDTO myBidInfoDTO = MyBidInfoDTO.builder()
+                        .bidAmount(previousBidAmount)
+                        .build();
 
                 // OUTBID 알림 전송
                 NotificationResponseDTO outbidDTO = NotificationResponseDTO.builder()
@@ -212,22 +277,27 @@ public class WebSocketHandler extends TextWebSocketHandler {
                         .type(outbidNotification.getType())
                         .isRead(outbidNotification.getIsRead())
                         .time(TimeUtils.getRelativeTimeString(outbidNotification.getCreatedAt()))
+                        .auctionInfo(AuctionInfoDTO.builder()
+                                .id(auctionId)
+                                .title(auction.getTitle())
+                                .currentPrice(auction.getCurrentPrice())
+                                .filePath(auction.getImages().get(0).getFilePath())
+                                .fileName(auction.getImages().get(0).getFileName())
+                                .auctionEndTime(auction.getAuctionEndTime())
+                                .build())
+                        .myBidInfo(myBidInfoDTO)
                         .build();
 
                 this.sseNotificationService.sendNotification(previousBidderId, outbidDTO);
             }
-
-            // 경매 남은 시간
-            Long auctionLeftTime = Math.max(0,
-                    Duration.between(LocalDateTime.now(), auction.getAuctionEndTime()).toSeconds());
 
             // 입찰 데이터
             WebSocketResponseDTO.BidData bidData = WebSocketResponseDTO.BidData.builder()
                     .userId(newBid.getUserId())
                     .nickname(user.getNickname())
                     .bidAmount(newBid.getBidAmount())
-                    .createdAt(newBid.getBidTime().toString())
-                    .auctionLeftTime(auctionLeftTime)
+                    .bidTime(newBid.getBidTime().toString())
+                    .auctionLeftTime(auction.getAuctionLeftTime())
                     .build();
 
             // 메시지 + 입찰 데이터
@@ -297,10 +367,11 @@ public class WebSocketHandler extends TextWebSocketHandler {
         Set<WebSocketSession> auctionRoom = auctionRooms.get(auction.getId());
 
         // Redis에서 최고 입찰 정보 조회
-        Optional<RedisBid> highestBid = redisBidRepository.findFirstByAuctionIdOrderByBidAmountDesc(auction.getId());
+        List<RedisBid> bidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
+        RedisBid highestBid = bidList.isEmpty() ? null : bidList.get(0);
 
         // 입찰 내역이 없는 경우 처리
-        if (highestBid.isEmpty()) {
+        if (highestBid == null) {
             WebSocketResponseDTO.TransactionResponse transactionResponse = WebSocketResponseDTO.TransactionResponse
                     .builder()
                     .message("입찰자가 없어 경매가 종료되었습니다.")
@@ -311,11 +382,11 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         // 최고 입찰자 정보 조회
-        Optional<User> highestBidder = userRepository.findById(highestBid.get().getUserId());
-        if (highestBidder.isPresent()) {
+        User highestBidder = userRepository.findById(highestBid.getUserId()).orElse(null);
+        if (highestBidder != null) {
             WebSocketResponseDTO.TransactionData transactionData = WebSocketResponseDTO.TransactionData.builder()
-                    .userId(highestBidder.get().getId())
-                    .nickname(highestBidder.get().getNickname())
+                    .userId(highestBidder.getId())
+                    .nickname(highestBidder.getNickname())
                     .status(TransactionStatus.COMPLETED)
                     .finalPrice(auction.getSuccessfulPrice())
                     .build();

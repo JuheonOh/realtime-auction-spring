@@ -60,4 +60,7 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
         // 종료 시간 이후인 경매 조회
         List<Auction> findByAuctionEndTimeAfterAndStatus(@Param("auctionEndTime") LocalDateTime auctionEndTime,
                         @Param("status") AuctionStatus status);
+
+        @Query("SELECT a FROM Auction a LEFT JOIN FETCH a.images WHERE a.id = :id")
+        Optional<Auction> findByIdWithImages(@Param("id") Long id);
 }

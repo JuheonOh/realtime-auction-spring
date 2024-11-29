@@ -92,4 +92,8 @@ public class Auction extends BaseTimeEntity {
     public void extendEndTime(Duration downtime) {
         this.auctionEndTime = this.auctionEndTime.plus(downtime);
     }
+
+    public Long getAuctionLeftTime() {
+        return Math.max(0, Duration.between(LocalDateTime.now(), this.auctionEndTime).toSeconds());
+    }
 }
