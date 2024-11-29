@@ -447,6 +447,7 @@ public class AuctionService {
                   .successfulPrice(highestBid.getBidAmount())
                   .filePath(auction.getImages().get(0).getFilePath())
                   .fileName(auction.getImages().get(0).getFileName())
+                  .auctionEndTime(auction.getAuctionEndTime())
                   .build())
               .build();
 

@@ -68,8 +68,8 @@ export default function Tooltip(props) {
       case "WIN":
         content = (
           <div className="flex font-bold justify-between items-center">
-            <span className="text-lg text-green-600">낙찰된 가격</span>
-            <span className="text-lg text-green-600">{auctionInfo?.successfulPrice.toLocaleString()} 원</span>
+            <span className="text-sm text-emerald-600">낙찰된 가격</span>
+            <span className="text-emerald-600">{auctionInfo?.successfulPrice.toLocaleString()} 원</span>
           </div>
         );
         break;
@@ -77,8 +77,8 @@ export default function Tooltip(props) {
         content = (
           <>
             <div className="flex font-bold justify-between items-center">
-              <span className="text-lg text-blue-600">현재 가격</span>
-              <span className="text-lg text-blue-600">{auctionInfo?.currentPrice.toLocaleString()} 원</span>
+              <span className="text-sm text-blue-600">현재 가격</span>
+              <span className="text-blue-600">{auctionInfo?.currentPrice.toLocaleString()} 원</span>
             </div>
           </>
         );
@@ -99,9 +99,13 @@ export default function Tooltip(props) {
             <img src={`${IMAGE_URL}/${auctionInfo.filePath}`} alt={auctionInfo.fileName} className="w-full h-full object-contain" />
           </div>
           {detailContent(detailNotification.type)}
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-900">종료 시간</span>
-            <span className="text-gray-900">{new Date(auctionInfo.auctionEndTime).toLocaleString()}</span>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-900">경매 종료 시간</span>
+            <span className="text-xs text-end text-gray-900">
+              {new Date(auctionInfo.auctionEndTime).toLocaleString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}
+              <br />
+              {new Date(auctionInfo.auctionEndTime).toLocaleString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
           </div>
         </div>
       </div>

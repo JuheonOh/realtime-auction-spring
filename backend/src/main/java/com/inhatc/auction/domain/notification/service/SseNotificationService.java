@@ -10,6 +10,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
@@ -46,9 +47,14 @@ public class SseNotificationService {
     // SSE 연결 생성
     public SseEmitter subscribe(HttpServletRequest request, Long userId) {
         String accessToken = jwtTokenProvider.getTokenFromRequest(request);
-        Long tokenUserId = jwtTokenProvider.getUserIdFromToken(accessToken);
+        if (accessToken == null) {
+            log.error("액세스 토큰이 없습니다.");
+            return null;
+        }
 
+        Long tokenUserId = jwtTokenProvider.getUserIdFromToken(accessToken);
         if (!jwtTokenProvider.validateToken(accessToken) || userId != tokenUserId) {
+            log.error("토큰 검증 실패 또는 사용자 ID 불일치");
             return null;
         }
 
@@ -58,20 +64,27 @@ public class SseNotificationService {
         List<SseEmitter> userEmitters = emitters.computeIfAbsent(userId, key -> new CopyOnWriteArrayList<>());
 
         try {
+            // 사용자 ID에 따른 SseEmitter 리스트에 연결 완료 메시지 전송
             List<NotificationResponseDTO> notifications = notificationService.getNotifications(request);
 
-            // 사용자 ID에 따른 SseEmitter 리스트에 연결 완료 메시지 전송
-            emitter.send(SseEmitter.event().name("connect").data(notifications));
+            if (!notifications.isEmpty()) {
+                emitter.send(SseEmitter.event().name("connect").data(notifications));
+            } else {
+                emitter.send(SseEmitter.event().name("connect").data(new ArrayList<>()));
+            }
+
             userEmitters.add(emitter);
 
             // SseEmitter 콜백 등록
             registerEmitterCallbacks(userId, emitter);
+
+            return emitter;
         } catch (IOException e) {
-            log.error("SseEmitter 생성 실패 : {}", e.getMessage());
+            log.error("SseNotificationService - IOException 발생 : {}", e.getMessage());
             emitter.complete();
         }
 
-        return emitter;
+        return null;
     }
 
     // 알림 전송
@@ -113,12 +126,13 @@ public class SseNotificationService {
     }
 
     // 즐겨찾기 경매 종료 1시간 전 알림 전송
-    @Scheduled(fixedRate = 1000) // 매 분마다 실행
+    @Transactional
+    @Scheduled(fixedRate = 10000) // 매 분마다 실행
     public void sendEndingSoonNotifications() {
         LocalDateTime oneHourLater = LocalDateTime.now().plusHours(1);
 
-        // 경매 종료시간이 1시간 후인 경매 조회
-        List<Auction> endingSoonAuctions = auctionRepository.findByAuctionEndTimeAfterAndStatus(oneHourLater,
+        // 1시간 뒤에 종료되는 경매 조회
+        List<Auction> endingSoonAuctions = auctionRepository.findByAuctionEndTimeBeforeAndStatus(oneHourLater,
                 AuctionStatus.ACTIVE);
 
         for (Auction auction : endingSoonAuctions) {

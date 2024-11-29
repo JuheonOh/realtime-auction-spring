@@ -40,14 +40,22 @@ public class NotificationService {
         String accessToken = jwtTokenProvider.getTokenFromRequest(request);
         Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
 
+        log.info("userId: {}", userId);
+
         List<Notification> notifications = notificationRepository
                 .findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId);
+
         return notifications.stream().<NotificationResponseDTO>map(notification -> {
             LocalDateTime createdAt = notification.getCreatedAt();
             String time = TimeUtils.getRelativeTimeString(createdAt);
 
             Long auctionId = notification.getAuctionId();
             Optional<Auction> auctionOptional = auctionRepository.findById(auctionId);
+
+            // 경매 정보가 없는 경우
+            if (auctionOptional.isEmpty()) {
+                return null;
+            }
 
             NotificationType type = notification.getType();
             if (type == NotificationType.BID) {
@@ -56,7 +64,7 @@ public class NotificationService {
                 Boolean isPreviousBidPresent = redisBidList.size() >= 2; // 이전 최고 입찰 정보가 있는 경우
 
                 // 경매 정보가 있고 입찰 정보가 있는 경우
-                if (auctionOptional.isPresent() && redisBidList.size() > 0) {
+                if (auctionOptional.isPresent() && !redisBidList.isEmpty()) {
                     Auction auction = auctionOptional.get();
 
                     // 이전 최고 입찰 정보가 있는 경우
@@ -156,6 +164,7 @@ public class NotificationService {
                                     .successfulPrice(auction.getCurrentPrice())
                                     .filePath(auction.getImages().get(0).getFilePath())
                                     .fileName(auction.getImages().get(0).getFileName())
+                                    .auctionEndTime(auction.getAuctionEndTime())
                                     .build())
                             .build();
 
@@ -184,20 +193,8 @@ public class NotificationService {
                 }
             }
 
-            NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
-                    .id(notification.getId())
-                    .type(notification.getType())
-                    .isRead(notification.getIsRead())
-                    .time(time)
-                    .auctionInfo(AuctionInfoDTO.builder()
-                            .title("삭제된 경매입니다.")
-                            .build())
-                    .build();
-
-            return notificationResponseDTO;
-
+            return null;
         }).collect(Collectors.toList());
-
     }
 
     // 모두 읽음 처리

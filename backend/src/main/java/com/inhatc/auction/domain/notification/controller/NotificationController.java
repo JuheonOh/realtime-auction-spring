@@ -38,7 +38,12 @@ public class NotificationController {
 
     @GetMapping(value = "/users/{userId}/notifications/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter getNotificationStream(HttpServletRequest request, @PathVariable("userId") Long userId) {
-        return sseNotificationService.subscribe(request, userId);
+        try {
+            return sseNotificationService.subscribe(request, userId);
+        } catch (Exception e) {
+            log.error("NotificationController - SseEmitter 생성 실패 : {}", e.getMessage());
+            throw new RuntimeException("알림 구독 처리 중 오류가 발생했습니다.");
+        }
     }
 
     @PatchMapping("/users/notifications/all")
