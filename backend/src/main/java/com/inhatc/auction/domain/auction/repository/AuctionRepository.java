@@ -49,16 +49,13 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
                         @Param("serverStopTime") LocalDateTime serverStopTime);
 
         // 종료된 경매 조회
+        @Query("SELECT a FROM Auction a WHERE a.auctionEndTime < :auctionEndTime AND a.status = :status")
         List<Auction> findByAuctionEndTimeBeforeAndStatus(@Param("auctionEndTime") LocalDateTime auctionEndTime,
                         @Param("status") AuctionStatus status);
 
         // 종료 시간 사이에 있는 경매 조회
         List<Auction> findByAuctionEndTimeBetweenAndStatus(@Param("startTime") LocalDateTime startTime,
                         @Param("endTime") LocalDateTime endTime,
-                        @Param("status") AuctionStatus status);
-
-        // 종료 시간 이후인 경매 조회
-        List<Auction> findByAuctionEndTimeAfterAndStatus(@Param("auctionEndTime") LocalDateTime auctionEndTime,
                         @Param("status") AuctionStatus status);
 
         @Query("SELECT a FROM Auction a LEFT JOIN FETCH a.images WHERE a.id = :id")

@@ -23,7 +23,7 @@ const NOTIFICATION = {
   },
   REMINDER: {
     icon: <Clock className="h-5 w-5 text-blue-500" />,
-    message: "관심 상품의 경매가 1시간 후 종료됩니다.",
+    message: "관심 경매가 1시간 후 종료됩니다.",
   },
 };
 
@@ -57,7 +57,7 @@ export default function NotificationComponent() {
     if (!user.info.id) return;
 
     let eventSource = null;
-    const fetchNotificationsStream = () => {
+    const fetchNotificationsStream = async () => {
       try {
         if (eventSource) {
           eventSource.close();
@@ -68,10 +68,9 @@ export default function NotificationComponent() {
 
         // 연결 성공 이벤트
         eventSource.addEventListener("connect", (e) => {
-          const notifications = JSON.parse(e.data);
-
           console.log(`(사용자 ID : ${user.info.id}) 알림 스트림 연결 성공`);
 
+          const notifications = JSON.parse(e.data).filter((notification) => notification !== null);
           setNotifications(
             notifications.map((notification) => ({
               ...notification,
@@ -92,9 +91,7 @@ export default function NotificationComponent() {
             }
 
             // 동일한 type과 auctionId를 가진 알림이 있는지 확인
-            const duplicateIndex = filterNotifications.findIndex(
-              (n) => n.type === notification.type && n.auctionInfo.id === notification.auctionInfo.id
-            );
+            const duplicateIndex = filterNotifications.findIndex((n) => n.type === notification.type && n.auctionInfo.id === notification.auctionInfo.id);
 
             // 중복된 알림이 없는 경우 새로운 알림 추가
             if (duplicateIndex === -1) {
@@ -113,7 +110,7 @@ export default function NotificationComponent() {
               ...notification,
               message: NOTIFICATION[notification.type].message,
             };
-            
+
             // 업데이트된 알림을 맨 앞으로 이동
             updatedNotifications.splice(duplicateIndex, 1);
 
@@ -239,7 +236,7 @@ export default function NotificationComponent() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-10">
+        <div className="absolute right-0 mt-2 w-[21rem] bg-white rounded-md shadow-lg z-10">
           <div className="px-4 py-2 bg-gray-100 text-gray-800 font-semibold flex justify-between items-center">
             <span>알림</span>
             {notifications.length > 0 && (
@@ -264,7 +261,7 @@ export default function NotificationComponent() {
                 <Link to={`/auctions/${notification.auctionInfo.id}`} key={notification.id} className={`px-2 py-2 hover:bg-blue-50 flex items-start ${notification.isRead ? "opacity-50" : ""}`} onClick={() => handleNotificationClick(notification)} onMouseEnter={() => handleMouseEnter(notification)}>
                   <div className="px-2 flex-shrink-0 justify-self-center self-center">{getIcon(notification.type)}</div>
                   <div className="px-1 flex-grow">
-                    <div className="text-sm">{notification.message}</div>
+                    <div className={`${notification.type === "OUTBID" ? "text-xs" : "text-sm"}`}>{notification.message}</div>
                     <div className="text-xs text-gray-500 mt-1">{notification.time}</div>
                   </div>
                   <div className="px-1 flex-shrink-0">

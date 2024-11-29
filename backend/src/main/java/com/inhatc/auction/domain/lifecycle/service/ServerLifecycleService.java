@@ -78,6 +78,10 @@ public class ServerLifecycleService {
         log.info("서버 재시작 시간: {}", serverStartTime);
         log.info("서버 다운타임 시간: {}", downtime);
 
+        if (downtime.toMinutes() < 1) {
+            return;
+        }
+
         // 보상이 필요한 경매 조회
         List<Auction> auctions = auctionRepository.findAuctionsForDowntimeCompensation(
                 AuctionStatus.ACTIVE,
@@ -86,7 +90,7 @@ public class ServerLifecycleService {
         // 보상 처리
         for (Auction auction : auctions) {
             // 경매들 다운타임만큼 종료시간 보상
-            // 경매 종료 시간 연장 (다운타임 + 10분 연장)
+            // 경매 종료 시간 연장 (다운타임 + 5분 연장)
             auction.extendEndTime(downtime.plusMinutes(10));
         }
 
