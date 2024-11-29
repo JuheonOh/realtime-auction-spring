@@ -17,6 +17,7 @@ import com.inhatc.auction.domain.auction.entity.AuctionStatus;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.favorite.entity.Favorite;
 import com.inhatc.auction.domain.favorite.repository.FavoriteRepository;
+import com.inhatc.auction.domain.notification.dto.response.AuctionInfoDTO;
 import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
 import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
@@ -37,6 +38,7 @@ public class SseNotificationService {
     private final AuctionRepository auctionRepository;
     private final FavoriteRepository favoriteRepository;
     private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
 
     private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>(); // 사용자 ID에 따른 SseEmitter 리스트
     private static final Long DEFAULT_TIMEOUT = 1000L * 60 * 10; // 10분
@@ -52,12 +54,14 @@ public class SseNotificationService {
 
         SseEmitter emitter = new SseEmitter(DEFAULT_TIMEOUT);
 
-        // 사용자 ID에 해당하는 SseEmitter 리스트 생성
+        // 사용자 ID에 따른 SseEmitter 리스트 생성
         List<SseEmitter> userEmitters = emitters.computeIfAbsent(userId, key -> new CopyOnWriteArrayList<>());
 
         try {
-            // 사용자 ID에 해당하는 SseEmitter 리스트에 연결 완료 메시지 전송
-            emitter.send(SseEmitter.event().name("connect").data(String.format("(사용자 ID %d번) 알림 SSE 연결 완료", userId)));
+            List<NotificationResponseDTO> notifications = notificationService.getNotifications(request);
+
+            // 사용자 ID에 따른 SseEmitter 리스트에 연결 완료 메시지 전송
+            emitter.send(SseEmitter.event().name("connect").data(notifications));
             userEmitters.add(emitter);
 
             // SseEmitter 콜백 등록
@@ -72,11 +76,6 @@ public class SseNotificationService {
 
     // 알림 전송
     public void sendNotification(Long userId, NotificationResponseDTO notificationResponseDTO) {
-        if (userId == null) {
-            log.error("userId가 null입니다.");
-            return;
-        }
-
         List<SseEmitter> userEmitters = emitters.get(userId);
         if (userEmitters == null || userEmitters.isEmpty()) {
             return;
@@ -114,7 +113,7 @@ public class SseNotificationService {
     }
 
     // 즐겨찾기 경매 종료 1시간 전 알림 전송
-    @Scheduled(fixedRate = 60000) // 매 분마다 실행
+    @Scheduled(fixedRate = 1000) // 매 분마다 실행
     public void sendEndingSoonNotifications() {
         LocalDateTime oneHourLater = LocalDateTime.now().plusHours(1);
 
@@ -145,6 +144,14 @@ public class SseNotificationService {
                         .type(NotificationType.REMINDER)
                         .isRead(notification.getIsRead())
                         .time(TimeUtils.getRelativeTimeString(notification.getCreatedAt()))
+                        .auctionInfo(AuctionInfoDTO.builder()
+                                .id(auction.getId())
+                                .title(auction.getTitle())
+                                .currentPrice(auction.getCurrentPrice())
+                                .filePath(auction.getImages().get(0).getFilePath())
+                                .fileName(auction.getImages().get(0).getFileName())
+                                .auctionEndTime(auction.getAuctionEndTime())
+                                .build())
                         .build();
 
                 this.sendNotification(favorite.getUser().getId(), notificationDTO);

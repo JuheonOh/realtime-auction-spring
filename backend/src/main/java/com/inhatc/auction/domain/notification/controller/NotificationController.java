@@ -54,6 +54,12 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/users/notifications/all")
+    public ResponseEntity<?> deleteNotificationAll(HttpServletRequest request) {
+        notificationService.deleteNotificationAll(request);
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/users/notifications")
     public ResponseEntity<?> deleteNotification(HttpServletRequest request,
             @RequestBody NotificationRequestDTO notificationRequestDTO) {

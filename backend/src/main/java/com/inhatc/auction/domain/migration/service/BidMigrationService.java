@@ -1,11 +1,10 @@
 package com.inhatc.auction.domain.migration.service;
 
 import java.util.List;
+import java.util.Optional;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
@@ -67,19 +66,19 @@ public class BidMigrationService {
                     redisBid.getBidAmount());
 
             if (!exists) {
-                Auction auction = auctionRepository.findById(redisBid.getAuctionId())
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다"));
-                User user = userRepository.findById(redisBid.getUserId())
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
+                Optional<Auction> auction = auctionRepository.findById(redisBid.getAuctionId());
+                Optional<User> user = userRepository.findById(redisBid.getUserId());
 
-                Bid bid = Bid.builder()
-                        .auction(auction)
-                        .user(user)
-                        .bidAmount(redisBid.getBidAmount())
-                        .bidTime(redisBid.getBidTime())
-                        .build();
+                if (auction.isPresent() && user.isPresent()) {
+                    Bid bid = Bid.builder()
+                            .auction(auction.get())
+                            .user(user.get())
+                            .bidAmount(redisBid.getBidAmount())
+                            .bidTime(redisBid.getBidTime())
+                            .build();
 
-                bidRepository.save(bid);
+                    bidRepository.save(bid);
+                }
             }
         }
     }

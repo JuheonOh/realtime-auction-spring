@@ -36,6 +36,7 @@ import com.inhatc.auction.domain.favorite.entity.Favorite;
 import com.inhatc.auction.domain.favorite.repository.FavoriteRepository;
 import com.inhatc.auction.domain.image.dto.response.ImageResponseDTO;
 import com.inhatc.auction.domain.image.entity.Image;
+import com.inhatc.auction.domain.notification.dto.response.AuctionInfoDTO;
 import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
 import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
@@ -407,50 +408,56 @@ public class AuctionService {
         // 입찰자가 있는 경우
         Optional<User> winner = userRepository.findById(highestBid.getUserId());
 
-        log.info("경매 ID: {}", auction.getId());
-        log.info("최고 입찰 ID: {}", highestBid.getId());
-        log.info("최고 입찰 금액: {}", highestBid.getBidAmount());
-        log.info("최고 입찰자 ID: {}", highestBid.getUserId());
-        log.info("최고 입찰자: {}", winner.get().getNickname());
+        if (winner.isPresent()) {
 
-        auction.updateStatus(AuctionStatus.ENDED);
-        auction.setSuccessfulPrice(highestBid.getBidAmount());
+          auction.updateStatus(AuctionStatus.ENDED);
+          auction.setSuccessfulPrice(highestBid.getBidAmount());
 
-        // 최종 거래 내역 저장
-        Transaction transaction = Transaction.builder()
-            .auction(auction)
-            .seller(auction.getUser())
-            .buyer(winner.get())
-            .finalPrice(highestBid.getBidAmount())
-            .status(TransactionStatus.COMPLETED)
-            .build();
+          // 최종 거래 내역 저장
+          Transaction transaction = Transaction.builder()
+              .auction(auction)
+              .seller(auction.getUser())
+              .buyer(winner.get())
+              .finalPrice(highestBid.getBidAmount())
+              .status(TransactionStatus.COMPLETED)
+              .build();
 
-        this.transactionRepository.save(transaction);
-        this.auctionRepository.save(auction);
-        log.info("경매 ID: {} 종료됨", auction.getId());
+          this.transactionRepository.save(transaction);
+          this.auctionRepository.save(auction);
+          log.info("경매 ID: {} 종료됨", auction.getId());
 
-        // 경매 낙찰 알림 생성
-        Notification notification = Notification.builder()
-            .user(winner.get())
-            .type(NotificationType.WIN)
-            .auctionId(auction.getId())
-            .build();
+          // 경매 낙찰 알림 생성
+          Notification notification = Notification.builder()
+              .user(winner.get())
+              .type(NotificationType.WIN)
+              .auctionId(auction.getId())
+              .build();
 
-        this.notificationRepository.save(notification);
+          this.notificationRepository.save(notification);
 
-        // 경매 낙찰 알림 전송
-        NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
-            .id(notification.getId())
-            .type(notification.getType())
-            .isRead(notification.getIsRead())
-            .time(TimeUtils.getRelativeTimeString(notification.getCreatedAt()))
-            .build();
+          // 경매 낙찰 알림 전송
+          NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+              .id(notification.getId())
+              .type(notification.getType())
+              .isRead(notification.getIsRead())
+              .time(TimeUtils.getRelativeTimeString(notification.getCreatedAt()))
+              .auctionInfo(AuctionInfoDTO.builder()
+                  .id(auction.getId())
+                  .title(auction.getTitle())
+                  .successfulPrice(highestBid.getBidAmount())
+                  .filePath(auction.getImages().get(0).getFilePath())
+                  .fileName(auction.getImages().get(0).getFileName())
+                  .build())
+              .build();
 
-        this.sseNotificationService.sendNotification(winner.get().getId(),
-            notificationResponseDTO);
+          // SSE 통해 경매 종료 알림 전송
 
-        // WebSocket 통해 경매 종료 알림
-        this.webSocketHandler.broadcastEnded(auction);
+          this.sseNotificationService.sendNotification(winner.get().getId(),
+              notificationResponseDTO);
+
+          // WebSocket 통해 경매 종료 메시지 전송
+          this.webSocketHandler.broadcastEnded(auction);
+        }
       }
     }
   }

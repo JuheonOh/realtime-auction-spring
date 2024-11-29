@@ -14,15 +14,6 @@ export const getUser = async () => {
   }
 };
 
-export const getNotifications = async () => {
-  try {
-    const response = await UserApi.get(`/api/users/notifications`);
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const getNotificationStream = (token, userId) => {
   try {
     const EventSource = EventSourcePolyfill || NativeEventSource;
@@ -51,6 +42,15 @@ export const patchNotification = async (notificationId) => {
     const response = await UserApi.patch(`/api/users/notifications`, {
       notificationId,
     });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteNotificationAll = async () => {
+  try {
+    const response = await UserApi.delete(`/api/users/notifications/all`);
     return response;
   } catch (error) {
     throw error;

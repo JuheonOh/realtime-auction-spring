@@ -25,4 +25,10 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
             @Param("auctionId") Long auctionId,
             @Param("userId") Long userId,
             @Param("bidAmount") Long bidAmount);
+
+    // 사용자의 입찰 정보 조회
+    @Query("SELECT b FROM Bid b WHERE b.auction.id = :auctionId AND b.user.id = :userId ORDER BY b.bidAmount DESC LIMIT 1")
+    Optional<Bid> findFirstByUserIdAndAuctionIdOrderByBidAmountDesc(
+            @Param("userId") Long userId,
+            @Param("auctionId") Long auctionId);
 }

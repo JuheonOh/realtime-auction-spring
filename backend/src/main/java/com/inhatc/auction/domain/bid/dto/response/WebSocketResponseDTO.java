@@ -24,7 +24,7 @@ public class WebSocketResponseDTO {
         private Long userId;
         private String nickname;
         private Long bidAmount;
-        private String createdAt;
+        private String bidTime;
         private Long auctionLeftTime;
     }
 
