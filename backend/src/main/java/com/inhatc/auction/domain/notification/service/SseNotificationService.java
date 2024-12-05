@@ -127,7 +127,7 @@ public class SseNotificationService {
 
     // 즐겨찾기 경매 종료 1시간 전 알림 전송
     @Transactional
-    @Scheduled(fixedRate = 10000) // 매 분마다 실행
+    @Scheduled(fixedRate = 60000) // 매 분마다 실행
     public void sendEndingSoonNotifications() {
         LocalDateTime oneHourLater = LocalDateTime.now().plusHours(1);
 
