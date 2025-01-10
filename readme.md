@@ -6,49 +6,32 @@
 
 ## ⏰ 개발 기간
 
-- 23.12.01일 - 24.03.01일
+- 24.09.11일 - 24.12.11일
 
 ## ⚙ 개발 환경
 
 ### Frontend
 
-- **Framework**: `React 18.2.0`
-- **상태관리**: `Redux Toolkit 2.0.1`
-- **스타일링**: `TailwindCSS 3.4.0`
-- **차트**: `Chart.js 4.4.1`
-- **HTTP 클라이언트**: `Axios 1.6.2`
+- **Library**: `React 18.3.1`
+- **State Management**: `Redux Toolkit 2.2.7`
+- **Styling**: `TailwindCSS 3.4.12`
+- **Chart**: `Chart.js 4.4.5`
+- **HTTP Client**: `Axios 1.7.7`
 
 ### Backend
 
-- **Framework**: `Spring Boot 3.2.0`
-- **보안**: `Spring Security 6.2.0`
-- **ORM**: `Spring Data JPA 3.2.0`
-- **실시간 통신**: `WebSocket`, `SSE`
-- **캐시**: `Redis 7.2`
-- **데이터베이스**: `MariaDB 10.11`
-
-## 📋 시스템 아키텍처
-
-<p align="center">
-  <img src="path/to/architecture/image.png" width="80%">
-</p>
-
-```
-Frontend (React) <--> API Gateway
-                     |
-                     |--> Auth Service
-                     |--> Auction Service
-                     |--> Notification Service
-                     |
-                     |--> Database (MariaDB)
-                     |--> Cache (Redis)
-                     |--> Message Queue
-```
+- **Language**: `Java 17`
+- **Framework**: `Spring Boot 3.3.4`
+- **Security**: `Spring Security`
+- **ORM**: `Spring Data JPA`
+- **Real-time Communication**: `WebSocket`, `SSE`
+- **Cache**: `Redis 3.0.504`
+- **Database**: `MariaDB 11.3`
 
 ## ⌨ E-R 다이어그램
 
 <p align="center">
-  <img src="path/to/er-diagram.png" width="80%">
+  <img src="assets/er-diagram.png" width="80%">
 </p>
 
 ## 🔍 주요 기능
@@ -60,6 +43,13 @@ Frontend (React) <--> API Gateway
 - 자동 입찰 기능
 - 즉시 구매 옵션
 - 경매 시간 자동 연장 시스템
+-
+
+#### 실시간 경매 순서도
+
+<p align="center">
+  <img src="assets/auction-flowchart.png" width="80%">
+</p>
 
 ### 실시간 알림
 
@@ -70,36 +60,58 @@ Frontend (React) <--> API Gateway
 
 ### 사용자 기능
 
-- JWT 기반 인증/인가
-- OAuth2.0 소셜 로그인
-- 관심 경매 등록/관리
-- 입찰 내역 조회
-- 낙찰 내역 관리
-
-### 관리자 기능
-
-- 경매 상품 관리
-- 사용자 관리
-- 입찰 현황 모니터링
-- 통계 대시보드
+- JWT 기반 인증
+- 관심 경매 등록
 
 ## 🖥 스크린샷
 
 ### 메인 페이지
 
-<img src="path/to/main-page.png" alt="메인 페이지">
+<p align="center">
+  <img src="assets/screenshots/01.png" width="80%">
+</p>
+
+### 로그인
+
+<p align="center">
+  <img src="assets/screenshots/02.png" width="50%">
+</p>
+
+### 회원가입
+
+<p align="center">
+  <img src="assets/screenshots/03.png" width="50%">
+</p>
+
+### 경매 목록
+
+<p align="center">
+  <img src="assets/screenshots/04.png" width="50%">
+</p>
 
 ### 경매 상세
 
-<img src="path/to/auction-detail.png" alt="경매 상세">
+<p align="center">
+  <img src="assets/screenshots/05.png" width="50%">
+</p>
+<p align="center">
+  <img src="assets/screenshots/06.png" width="50%">
+</p>
 
-### 실시간 입찰
+### 경매 등록
 
-<img src="path/to/real-time-bidding.png" alt="실시간 입찰">
+<p align="center">
+  <img src="assets/screenshots/07.png" width="50%">
+</p>
+<p align="center">
+  <img src="assets/screenshots/08.png" width="50%">
+</p>
 
-### 관리자 대시보드
+### 알림
 
-<img src="path/to/admin-dashboard.png" alt="관리자 대시보드">
+<p align="center">
+  <img src="assets/screenshots/09.png" width="50%">
+</p>
 
 ## 🔄 API 명세
 
@@ -119,7 +131,6 @@ GET    /api/auctions          - 경매 목록 조회
 POST   /api/auctions          - 경매 등록
 GET    /api/auctions/{id}     - 경매 상세 조회
 POST   /api/auctions/{id}/bid - 입찰
-DELETE /api/auctions/{id}     - 경매 삭제
 ```
 
 ### 알림 API
