@@ -189,7 +189,7 @@ export default function AuctionCreatePage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="p-6 sm:p-10">
-            <h1 className="text-3xl font-bold mb-6">경매 상품 등록</h1>
+            <h1 className="text-3xl font-bold mb-6">경매 등록</h1>
             <form onSubmit={handleSubmit} className="space-y-6">
               <InputField name="title" label="상품명" placeholder="상품명을 입력하세요." value={formData.title} handleChange={handleChange} inValid={inValid} />
               <div>
