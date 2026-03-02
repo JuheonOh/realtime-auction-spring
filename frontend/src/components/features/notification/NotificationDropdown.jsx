@@ -11,19 +11,31 @@ import Tooltip from "./Tooltip";
 const NOTIFICATION = {
   BID: {
     icon: <CheckCircle className="h-5 w-5 text-green-500" />,
-    message: "고객님의 입찰이 현재 최고가 입니다.",
+    message: "고객님의 입찰이 현재 최고가입니다.",
   },
   OUTBID: {
-    icon: <AlertCircle className="h-5 w-5 text-red-500" />,
+    icon: <AlertCircle className="h-5 w-5 text-rose-500" />,
     message: "다른 사용자가 더 높은 가격을 입찰했습니다.",
   },
   WIN: {
     icon: <CheckCircle className="h-5 w-5 text-green-500" />,
     message: "축하합니다! 경매에서 낙찰되었습니다.",
   },
+  BUY_NOW_WIN: {
+    icon: <CheckCircle className="h-5 w-5 text-emerald-500" />,
+    message: "축하합니다! 경매에서 낙찰되었습니다.",
+  },
   REMINDER: {
     icon: <Clock className="h-5 w-5 text-blue-500" />,
     message: "관심 경매가 1시간 후 종료됩니다.",
+  },
+  ENDED: {
+    icon: <AlertCircle className="h-5 w-5 text-rose-500" />,
+    message: "다른 사용자의 즉시구매로 패찰되었습니다.",
+  },
+  ENDED_TIME: {
+    icon: <AlertCircle className="h-5 w-5 text-rose-500" />,
+    message: "경매 마감 시점에 더 높은 입찰가가 있어 패찰되었습니다.",
   },
 };
 
@@ -74,7 +86,7 @@ export default function NotificationComponent() {
           setNotifications(
             notifications.map((notification) => ({
               ...notification,
-              message: NOTIFICATION[notification.type].message,
+              message: NOTIFICATION[notification.type]?.message
             }))
           );
         });
@@ -98,7 +110,7 @@ export default function NotificationComponent() {
               return [
                 {
                   ...notification,
-                  message: NOTIFICATION[notification.type].message,
+                  message: NOTIFICATION[notification.type]?.message
                 },
                 ...filterNotifications,
               ];
@@ -108,7 +120,7 @@ export default function NotificationComponent() {
             const updatedNotifications = [...filterNotifications];
             updatedNotifications[duplicateIndex] = {
               ...notification,
-              message: NOTIFICATION[notification.type].message,
+              message: NOTIFICATION[notification.type]?.message
             };
 
             // 업데이트된 알림을 맨 앞으로 이동
@@ -118,7 +130,7 @@ export default function NotificationComponent() {
             return [
               {
                 ...notification,
-                message: NOTIFICATION[notification.type].message,
+                message: NOTIFICATION[notification.type]?.message
               },
               ...updatedNotifications,
             ];
@@ -126,7 +138,7 @@ export default function NotificationComponent() {
         });
 
         // SSE 연결 유지 이벤트
-        eventSource.addEventListener("ping", (e) => {});
+        eventSource.addEventListener("ping", (e) => { });
 
         // SSE 연결 에러 이벤트
         eventSource.addEventListener("error", async (res) => {
@@ -143,7 +155,7 @@ export default function NotificationComponent() {
         });
 
         // SSE 연결 타임아웃 이벤트
-        eventSource.addEventListener("timeout", (e) => {});
+        eventSource.addEventListener("timeout", (e) => { });
       } catch (err) {
         console.error(err);
 
@@ -261,7 +273,7 @@ export default function NotificationComponent() {
                 <Link to={`/auctions/${notification.auctionInfo.id}`} key={notification.id} className={`px-2 py-2 hover:bg-blue-50 flex items-start ${notification.isRead ? "opacity-50" : ""}`} onClick={() => handleNotificationClick(notification)} onMouseEnter={() => handleMouseEnter(notification)}>
                   <div className="px-2 flex-shrink-0 justify-self-center self-center">{getIcon(notification.type)}</div>
                   <div className="px-1 flex-grow">
-                    <div className={`${notification.type === "OUTBID" ? "text-xs" : "text-sm"}`}>{notification.message}</div>
+                    <div className="text-sm">{notification.message}</div>
                     <div className="text-xs text-gray-500 mt-1">{notification.time}</div>
                   </div>
                   <div className="px-1 flex-shrink-0">

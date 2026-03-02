@@ -7,8 +7,10 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -37,6 +39,7 @@ import com.inhatc.auction.domain.favorite.repository.FavoriteRepository;
 import com.inhatc.auction.domain.image.dto.response.ImageResponseDTO;
 import com.inhatc.auction.domain.image.entity.Image;
 import com.inhatc.auction.domain.notification.dto.response.AuctionInfoDTO;
+import com.inhatc.auction.domain.notification.dto.response.MyBidInfoDTO;
 import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
 import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
@@ -81,32 +84,27 @@ public class AuctionService {
   public AuctionDetailResponseDTO getAuctionDetail(HttpServletRequest request, Long auctionId) {
     // 경매 조회
     Auction auction = this.auctionRepository.findById(auctionId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-            "경매를 찾을 수 없습니다"));
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다."));
 
-    // Redis에서 입찰 내역 조회
+    // Redis 입찰 내역 조회
     List<RedisBid> redisBids = redisBidRepository.findByAuctionIdOrderByBidTimeAsc(auctionId);
-
     // 입찰 개수
-    Long bidCount = Long.valueOf(redisBids.size());
+    Long bidCount = (long) redisBids.size();
 
-    // 기본적으로 관심 경매 여부는 false
+    // 기본 관심 상태는 false
     boolean isFavorite = false;
-
-    // 관심 경매 여부 확인 (로그인된 경우)
+    // 로그인된 경우 관심 경매 여부 확인
     if (request.getHeader("Authorization") != null) {
       String accessToken = jwtTokenProvider.getTokenFromRequest(request);
       Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
       User user = userRepository.findById(userId).get();
-
-      // 관심 경매 여부 확인
       isFavorite = favoriteRepository.existsByUserAndAuction(user, auction);
     }
 
     // 관심 개수
     Long favoriteCount = this.favoriteRepository.countByAuctionId(auctionId);
 
-    // 경매 종료까지 남은 시간 (초)
+    // 경매 종료까지 남은 시간(초)
     Long auctionLeftTime = Math.max(0,
         Duration.between(LocalDateTime.now(), auction.getAuctionEndTime()).toSeconds());
 
@@ -175,7 +173,7 @@ public class AuctionService {
 
   @Transactional(readOnly = true)
   public List<AuctionResponseDTO> getFeaturedAuctionList() {
-    // 경매 입찰 수 내림차순으로 조회
+    // 입찰 수 내림차순으로 조회
     List<Auction> auctions = this.auctionRepository.findAllByOrderByBidCountDesc();
 
     return auctions.stream()
@@ -205,7 +203,7 @@ public class AuctionService {
 
   @Transactional(readOnly = true)
   public List<AuctionResponseDTO> getAuctionList() {
-    // 현재시간보다 경매 종료 시간 + 10분 이후인 경매 조회
+    // 현재 시간 기준 종료 10분 이후 경매 조회
     List<Auction> auctions = auctionRepository.findAllByAuctionEndTimeAfter(10);
 
     return auctions.stream()
@@ -244,12 +242,10 @@ public class AuctionService {
     List<MultipartFile> multipartFiles = requestDTO.getImages();
 
     User user = this.userRepository.findById(userId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-            "사용자를 찾을 수 없습니다"));
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
     Category category = this.categoryRepository.findById(categoryId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-            "카테고리를 찾을 수 없습니다"));
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다"));
 
     Auction auction = Auction.builder()
         .user(user)
@@ -293,7 +289,7 @@ public class AuctionService {
                   && !fileType.equals("image/webp")) {
                 throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "이미지 파일 타입이 올바르지 않습니다. 허용되는 타입: jpeg, png, jpg, gif, bmp, webp");
+                    "이미지 파일 타입이 올바르지 않습니다. 허용 타입: jpeg, png, jpg, gif, bmp, webp");
               }
 
               Path filePath = uploadDir.resolve(fileSaveName);
@@ -315,7 +311,7 @@ public class AuctionService {
           })
           .collect(Collectors.toList());
 
-      auction.setImages(imageList); // 마지막에 연결해줘야 auction_id가 image 테이블에 들어감
+      auction.setImages(imageList);
     } catch (Exception e) {
       log.error("이미지 업로드 중 오류 발생", e);
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 업로드 중 오류 발생", e);
@@ -328,44 +324,41 @@ public class AuctionService {
 
   @Transactional
   public void buyNowAuction(HttpServletRequest request, Long auctionId) {
-    // Authorization 헤더가 없는 경우 (로그인 안된 경우)
+    // Authorization 헤더가 없는 경우
     if (request.getHeader("Authorization") == null) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다");
     }
 
-    // 토큰이 유효하지 않은 경우
+    // 토큰 유효성 검증
     String accessToken = jwtTokenProvider.getTokenFromRequest(request);
     if (accessToken == null || !jwtTokenProvider.validateToken(accessToken)) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다. 다시 로그인해주세요.");
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다. 다시 로그인해 주세요");
     }
 
-    // 토큰에서 사용자 ID 출
+    // 토큰에서 사용자 ID 추출
     Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
 
-    // 사용자 조회
+    // 사용자/경매 조회
     User user = this.userRepository.findById(userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
-    // 경매 조회
     Auction auction = this.auctionRepository.findById(auctionId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다"));
 
-    // 현재 경매가 종료된 경우
     if (auction.getAuctionEndTime().isBefore(LocalDateTime.now())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료된 경매에는 즉시 구매할 수 없습니다.");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료된 경매는 즉시 구매할 수 없습니다.");
     }
 
-    // 즉시 구매하려는 경매가 내가 등록한 경매인 경우
     if (auction.getUser().getId().equals(user.getId())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 즉시 구매할 수 없습니다.");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "본인이 등록한 경매는 즉시 구매할 수 없습니다.");
     }
 
-    // 매 (종료 시간, 최종 낙찰가, 상태) 업데이트
+    // 경매 상태 및 종료 시간 업데이트
     auction.updateAuctionEndTime(LocalDateTime.now());
     auction.setSuccessfulPrice(auction.getBuyNowPrice());
     auction.updateStatus(AuctionStatus.ENDED);
 
-    // 최종 거래 내역 저장
+    // 최종 거래 저장
     Transaction transaction = Transaction.builder()
         .auction(auction)
         .seller(auction.getUser())
@@ -377,7 +370,9 @@ public class AuctionService {
 
     this.auctionRepository.save(auction);
 
-    // 경매 종료 알림
+    // 구매자는 WIN, 기존 입찰자는 ENDED 알림 전송
+    notifyAuctionEndedToBidders(auction, user);
+
     SseTransactionResponseDTO sseBuyNowResponseDTO = SseTransactionResponseDTO.builder()
         .userId(user.getId())
         .nickname(user.getNickname())
@@ -387,7 +382,153 @@ public class AuctionService {
     this.sseEmitterService.broadcastBuyNow(auctionId, sseBuyNowResponseDTO);
   }
 
-  // 30초 마다 종료된 경매 업데이트
+  // 즉시구매 종료 시: 구매자는 WIN, 기존 입찰자는 ENDED 알림 전송
+  private void notifyAuctionEndedToBidders(Auction auction, User buyer) {
+    // 경매의 입찰 참여자 목록 조회
+    List<RedisBid> auctionBidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
+    List<Long> bidderIds = auctionBidList
+        .stream()
+        .map(RedisBid::getUserId)
+        .distinct()
+        .collect(Collectors.toList());
+
+    Set<Long> recipientIds = new LinkedHashSet<>(bidderIds);
+    recipientIds.add(buyer.getId());
+
+    // 알림 payload에 사용할 대표 이미지 정보
+    String filePath = null;
+    String fileName = null;
+    if (auction.getImages() != null && !auction.getImages().isEmpty()) {
+      filePath = auction.getImages().get(0).getFilePath();
+      fileName = auction.getImages().get(0).getFileName();
+    }
+
+    for (Long recipientId : recipientIds) {
+      User recipient = userRepository.findById(recipientId).orElse(null);
+      if (recipient == null) {
+        continue;
+      }
+
+      NotificationType notificationType = recipientId.equals(buyer.getId())
+          ? NotificationType.WIN
+          : NotificationType.ENDED;
+
+      // 동일 타입 중복 알림 soft-delete
+      notificationRepository.findDuplicatedNotification(recipientId, notificationType, auction.getId())
+          .ifPresent(duplicate -> {
+            duplicate.markAsDeleted();
+            notificationRepository.save(duplicate);
+          });
+
+      // 알림 생성/저장
+      Notification endedNotification = Notification.builder()
+          .user(recipient)
+          .type(notificationType)
+          .auctionId(auction.getId())
+          .build();
+
+      notificationRepository.save(endedNotification);
+
+      NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+          .id(endedNotification.getId())
+          .type(endedNotification.getType())
+          .isRead(endedNotification.getIsRead())
+          .time(TimeUtils.getRelativeTimeString(endedNotification.getCreatedAt()))
+          .auctionInfo(AuctionInfoDTO.builder()
+              .id(auction.getId())
+              .title(auction.getTitle())
+              .currentPrice(auction.getCurrentPrice())
+              .successfulPrice(auction.getSuccessfulPrice())
+              .filePath(filePath)
+              .fileName(fileName)
+              .auctionEndTime(auction.getAuctionEndTime())
+              .build())
+          .myBidInfo(notificationType == NotificationType.ENDED
+              ? getHighestMyBidInfo(auctionBidList, recipientId)
+              : null)
+          .build();
+
+      // SSE 푸시 전송
+      sseNotificationService.sendNotification(recipientId, notificationResponseDTO);
+    }
+  }
+
+  // 마감 시간 도달 시 패찰자(비낙찰자) 알림 전송
+  private void notifyAuctionEndedByTimeToLosers(Auction auction, Long winnerId, List<RedisBid> bidList) {
+    List<Long> loserIds = bidList.stream()
+        .map(RedisBid::getUserId)
+        .distinct()
+        .filter(userId -> !userId.equals(winnerId))
+        .collect(Collectors.toList());
+
+    if (loserIds.isEmpty()) {
+      return;
+    }
+
+    String filePath = null;
+    String fileName = null;
+    if (auction.getImages() != null && !auction.getImages().isEmpty()) {
+      filePath = auction.getImages().get(0).getFilePath();
+      fileName = auction.getImages().get(0).getFileName();
+    }
+
+    for (Long loserId : loserIds) {
+      User loser = userRepository.findById(loserId).orElse(null);
+      if (loser == null) {
+        continue;
+      }
+
+      notificationRepository.findDuplicatedNotification(loserId, NotificationType.ENDED_TIME, auction.getId())
+          .ifPresent(duplicate -> {
+            duplicate.markAsDeleted();
+            notificationRepository.save(duplicate);
+          });
+
+      Notification endedTimeNotification = Notification.builder()
+          .user(loser)
+          .type(NotificationType.ENDED_TIME)
+          .auctionId(auction.getId())
+          .build();
+
+      notificationRepository.save(endedTimeNotification);
+
+      NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+          .id(endedTimeNotification.getId())
+          .type(endedTimeNotification.getType())
+          .isRead(endedTimeNotification.getIsRead())
+          .time(TimeUtils.getRelativeTimeString(endedTimeNotification.getCreatedAt()))
+          .auctionInfo(AuctionInfoDTO.builder()
+              .id(auction.getId())
+              .title(auction.getTitle())
+              .currentPrice(auction.getCurrentPrice())
+              .successfulPrice(auction.getSuccessfulPrice())
+              .filePath(filePath)
+              .fileName(fileName)
+              .auctionEndTime(auction.getAuctionEndTime())
+              .build())
+          .myBidInfo(getHighestMyBidInfo(bidList, loserId))
+          .build();
+
+      sseNotificationService.sendNotification(loserId, notificationResponseDTO);
+    }
+  }
+
+  // 특정 사용자의 최고 입찰가 정보 반환
+  private MyBidInfoDTO getHighestMyBidInfo(List<RedisBid> bidList, Long userId) {
+    if (bidList == null || userId == null) {
+      return null;
+    }
+
+    return bidList.stream()
+        .filter(bid -> userId.equals(bid.getUserId()))
+        .findFirst()
+        .map(bid -> MyBidInfoDTO.builder()
+            .bidAmount(bid.getBidAmount())
+            .build())
+        .orElse(null);
+  }
+
+  // 30초마다 종료된 경매 정산
   @Scheduled(fixedRate = 30000)
   @Transactional
   public void updateEndedAuctions() {
@@ -397,7 +538,8 @@ public class AuctionService {
     for (Auction auction : endedAuctions) {
       // Redis에서 금액순으로 정렬된 입찰 내역 조회
       List<RedisBid> bidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
-      RedisBid highestBid = bidList.isEmpty() ? null : bidList.get(0); // 최고 입찰자
+      // 최고 입찰자
+      RedisBid highestBid = bidList.isEmpty() ? null : bidList.get(0);
 
       // 입찰 내역이 없는 경우
       if (highestBid == null) {
@@ -409,11 +551,9 @@ public class AuctionService {
         Optional<User> winner = userRepository.findById(highestBid.getUserId());
 
         if (winner.isPresent()) {
-
           auction.updateStatus(AuctionStatus.ENDED);
           auction.setSuccessfulPrice(highestBid.getBidAmount());
 
-          // 최종 거래 내역 저장
           Transaction transaction = Transaction.builder()
               .auction(auction)
               .seller(auction.getUser())
@@ -424,7 +564,7 @@ public class AuctionService {
 
           this.transactionRepository.save(transaction);
           this.auctionRepository.save(auction);
-          log.info("경매 ID: {} 종료됨", auction.getId());
+          log.info("Auction ID: {} ended", auction.getId());
 
           // 경매 낙찰 알림 생성
           Notification notification = Notification.builder()
@@ -435,7 +575,6 @@ public class AuctionService {
 
           this.notificationRepository.save(notification);
 
-          // 경매 낙찰 알림 전송
           NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
               .id(notification.getId())
               .type(notification.getType())
@@ -451,19 +590,18 @@ public class AuctionService {
                   .build())
               .build();
 
-          // SSE 통해 경매 종료 알림 전송
+          // 낙찰자에게 SSE 알림 전송
+          this.sseNotificationService.sendNotification(winner.get().getId(), notificationResponseDTO);
 
-          this.sseNotificationService.sendNotification(winner.get().getId(),
-              notificationResponseDTO);
-
-          // WebSocket 통해 경매 종료 메시지 전송
+          // 비낙찰자 ENDED_TIME 알림 및 WebSocket 종료 브로드캐스트
+          notifyAuctionEndedByTimeToLosers(auction, winner.get().getId(), bidList);
           this.webSocketHandler.broadcastEnded(auction);
         }
       }
     }
   }
 
-  // 관심한 경매 등록/제거
+  // 관심 경매 등록/해제
   @Transactional
   public void favoriteAuction(HttpServletRequest request, Long auctionId) {
     String accessToken = jwtTokenProvider.getTokenFromRequest(request);
@@ -475,12 +613,11 @@ public class AuctionService {
     Auction auction = this.auctionRepository.findById(auctionId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다"));
 
-    // 기존에 관심한 경매이면 제거
+    // 기존에 관심한 경매면 제거, 아니면 신규 등록
     boolean isFavorite = this.favoriteRepository.existsByUserAndAuction(user, auction);
     if (isFavorite) {
       this.favoriteRepository.deleteByUserAndAuction(user, auction);
     } else {
-      // 관심한 경매 등록
       Favorite favorite = Favorite.builder().user(user).auction(auction).build();
       this.favoriteRepository.save(favorite);
     }
