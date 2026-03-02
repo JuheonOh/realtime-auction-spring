@@ -1,8 +1,30 @@
 const CracoAlias = require("craco-alias");
 
 module.exports = {
-  devServer: {
-    port: 80,
+  devServer: (devServerConfig) => {
+    devServerConfig.port = 80;
+
+    const onBeforeSetupMiddleware = devServerConfig.onBeforeSetupMiddleware;
+    const onAfterSetupMiddleware = devServerConfig.onAfterSetupMiddleware;
+
+    if (onBeforeSetupMiddleware || onAfterSetupMiddleware) {
+      devServerConfig.setupMiddlewares = (middlewares, devServer) => {
+        if (typeof onBeforeSetupMiddleware === "function") {
+          onBeforeSetupMiddleware(devServer);
+        }
+
+        if (typeof onAfterSetupMiddleware === "function") {
+          onAfterSetupMiddleware(devServer);
+        }
+
+        return middlewares;
+      };
+
+      delete devServerConfig.onBeforeSetupMiddleware;
+      delete devServerConfig.onAfterSetupMiddleware;
+    }
+
+    return devServerConfig;
   },
   plugins: [
     {

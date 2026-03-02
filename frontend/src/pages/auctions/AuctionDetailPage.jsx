@@ -13,7 +13,7 @@ import useInterval from "@hooks/useInterval";
 import { IMAGE_URL, WS_BASE_URL } from "@utils/constant";
 import { addCommas, formatNumberInput } from "@utils/formatNumber";
 import formatTime from "@utils/formatTime";
-import { Clock, Eye, Gavel, Heart, MessageSquareMore, Share2, Star, Tag, User } from "lucide-react";
+import { Clock, Eye, Gavel, Heart, Share2, Tag, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
