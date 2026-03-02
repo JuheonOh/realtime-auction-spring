@@ -372,14 +372,6 @@ public class AuctionService {
 
     // 구매자는 WIN, 기존 입찰자는 ENDED 알림 전송
     notifyAuctionEndedToBidders(auction, user);
-
-    SseTransactionResponseDTO sseBuyNowResponseDTO = SseTransactionResponseDTO.builder()
-        .userId(user.getId())
-        .nickname(user.getNickname())
-        .status(TransactionStatus.COMPLETED)
-        .build();
-
-    this.sseEmitterService.broadcastBuyNow(auctionId, sseBuyNowResponseDTO);
   }
 
   // 즉시구매 종료 시: 구매자는 WIN, 기존 입찰자는 ENDED 알림 전송

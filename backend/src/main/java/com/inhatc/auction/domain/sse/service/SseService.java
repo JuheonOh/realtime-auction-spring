@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
-import com.inhatc.auction.domain.sse.dto.response.SseBidResponseDTO;
 import com.inhatc.auction.domain.sse.dto.response.SseTransactionResponseDTO;
 
 import jakarta.annotation.PreDestroy;
@@ -119,15 +118,23 @@ public class SseService {
         }
     }
 
+    //
+    //
+    // 현재는 사용하지 않는 코드
+    // SSE 환경으로의 입찰은 어떤 느낌인지 확인해보기 위해 구현한 코드
     // (SSE -> bid 이벤트) 특정 경매의 모든 구독자에게 입찰 데이터 전송
-    public void broadcastBid(Long auctionId, SseBidResponseDTO sseBidResponseDTO) {
-        this.broadcastEvent(auctionId, "bid", sseBidResponseDTO);
-    }
-
-    // (SSE -> buyNow 이벤트) 특정 경매의 모든 구독자에게 경매 종료 알림 전송
-    public void broadcastBuyNow(Long auctionId, SseTransactionResponseDTO sseTransactionResponseDTO) {
-        this.broadcastEvent(auctionId, "buy-now", sseTransactionResponseDTO);
-    }
+    // public void broadcastBid(Long auctionId, SseBidResponseDTO sseBidResponseDTO) {
+    //     this.broadcastEvent(auctionId, "bid", sseBidResponseDTO);
+    // }
+    
+    // 현재는 사용하지 않는 코드
+    // (즉시구매시 SSE 알림 브로드캐스트) 특정 경매의 모든 구독자에게 경매 종료 알림 전송
+    // public void broadcastBuyNow(Long auctionId, SseTransactionResponseDTO sseTransactionResponseDTO) {
+    //     this.broadcastEvent(auctionId, "buy-now", sseTransactionResponseDTO);
+    // }
+    //
+    //
+    
 
     // 1분마다 서버 시간 기준 경매 남은 시간 전송
     @Scheduled(fixedRate = 60000)
