@@ -372,14 +372,77 @@ public class AuctionService {
 
     // 구매자는 WIN, 기존 입찰자는 ENDED 알림 전송
     notifyAuctionEndedToBidders(auction, user);
+  }
 
-    SseTransactionResponseDTO sseBuyNowResponseDTO = SseTransactionResponseDTO.builder()
-        .userId(user.getId())
-        .nickname(user.getNickname())
-        .status(TransactionStatus.COMPLETED)
-        .build();
+  // 즉시구매 종료 시: 구매자는 WIN, 기존 입찰자는 ENDED 알림 전송
+  private void notifyAuctionEndedToBidders(Auction auction, User buyer) {
+    // 경매의 입찰 참여자 목록 조회
+    List<RedisBid> auctionBidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
+    List<Long> bidderIds = auctionBidList
+        .stream()
+        .map(RedisBid::getUserId)
+        .distinct()
+        .collect(Collectors.toList());
 
-    this.sseEmitterService.broadcastBuyNow(auctionId, sseBuyNowResponseDTO);
+    Set<Long> recipientIds = new LinkedHashSet<>(bidderIds);
+    recipientIds.add(buyer.getId());
+
+    // 알림 payload에 사용할 대표 이미지 정보
+    String filePath = null;
+    String fileName = null;
+    if (auction.getImages() != null && !auction.getImages().isEmpty()) {
+      filePath = auction.getImages().get(0).getFilePath();
+      fileName = auction.getImages().get(0).getFileName();
+    }
+
+    for (Long recipientId : recipientIds) {
+      User recipient = userRepository.findById(recipientId).orElse(null);
+      if (recipient == null) {
+        continue;
+      }
+
+      NotificationType notificationType = recipientId.equals(buyer.getId())
+          ? NotificationType.WIN
+          : NotificationType.ENDED;
+
+      // 동일 타입 중복 알림 soft-delete
+      notificationRepository.findDuplicatedNotification(recipientId, notificationType, auction.getId())
+          .ifPresent(duplicate -> {
+            duplicate.markAsDeleted();
+            notificationRepository.save(duplicate);
+          });
+
+      // 알림 생성/저장
+      Notification endedNotification = Notification.builder()
+          .user(recipient)
+          .type(notificationType)
+          .auctionId(auction.getId())
+          .build();
+
+      notificationRepository.save(endedNotification);
+
+      NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+          .id(endedNotification.getId())
+          .type(endedNotification.getType())
+          .isRead(endedNotification.getIsRead())
+          .time(TimeUtils.getRelativeTimeString(endedNotification.getCreatedAt()))
+          .auctionInfo(AuctionInfoDTO.builder()
+              .id(auction.getId())
+              .title(auction.getTitle())
+              .currentPrice(auction.getCurrentPrice())
+              .successfulPrice(auction.getSuccessfulPrice())
+              .filePath(filePath)
+              .fileName(fileName)
+              .auctionEndTime(auction.getAuctionEndTime())
+              .build())
+          .myBidInfo(notificationType == NotificationType.ENDED
+              ? getHighestMyBidInfo(auctionBidList, recipientId)
+              : null)
+          .build();
+
+      // SSE 푸시 전송
+      sseNotificationService.sendNotification(recipientId, notificationResponseDTO);
+    }
   }
 
   // 즉시구매 종료 시: 구매자는 WIN, 기존 입찰자는 ENDED 알림 전송
