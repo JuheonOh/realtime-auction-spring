@@ -41,7 +41,8 @@ const filterChartData = (data, maxPoints = 20) => {
 };
 
 export default function BidChart({ bidData, startPrice, userId }) {
-  const filteredData = filterChartData(bidData);
+  // const filteredData = filterChartData(bidData);
+  const filteredData = bidData;
 
   // 만 단위 올림 함수
   const ceilToThousand = (value) => Math.ceil(value / 1000) * 1000;
