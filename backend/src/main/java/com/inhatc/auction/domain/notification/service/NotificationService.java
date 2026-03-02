@@ -149,7 +149,7 @@ public class NotificationService {
 
                     return notificationResponseDTO;
                 }
-            } else if (type == NotificationType.WIN) {
+            } else if (type == NotificationType.WIN || type == NotificationType.BUY_NOW_WIN) {
                 if (auctionOptional.isPresent()) {
                     Auction auction = auctionOptional.get();
 
@@ -161,7 +161,7 @@ public class NotificationService {
                             .auctionInfo(AuctionInfoDTO.builder()
                                     .id(auction.getId())
                                     .title(auction.getTitle())
-                                    .successfulPrice(auction.getCurrentPrice())
+                                    .successfulPrice(auction.getSuccessfulPrice())
                                     .filePath(auction.getImages().get(0).getFilePath())
                                     .fileName(auction.getImages().get(0).getFileName())
                                     .auctionEndTime(auction.getAuctionEndTime())
@@ -187,6 +187,37 @@ public class NotificationService {
                                     .fileName(auction.getImages().get(0).getFileName())
                                     .auctionEndTime(auction.getAuctionEndTime())
                                     .build())
+                            .build();
+
+                    return notificationResponseDTO;
+                }
+            } else if (type == NotificationType.ENDED || type == NotificationType.ENDED_TIME) {
+                if (auctionOptional.isPresent()) {
+                    Auction auction = auctionOptional.get();
+                    List<RedisBid> myBidsList = redisBidRepository.findByAuctionIdAndUserIdOrderByBidAmountDesc(
+                            auctionId,
+                            userId);
+                    MyBidInfoDTO myBidInfoDTO = myBidsList.isEmpty()
+                            ? null
+                            : MyBidInfoDTO.builder()
+                                    .bidAmount(myBidsList.get(0).getBidAmount())
+                                    .build();
+
+                    NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+                            .id(notification.getId())
+                            .type(notification.getType())
+                            .isRead(notification.getIsRead())
+                            .time(time)
+                            .auctionInfo(AuctionInfoDTO.builder()
+                                    .id(auction.getId())
+                                    .title(auction.getTitle())
+                                    .currentPrice(auction.getCurrentPrice())
+                                    .successfulPrice(auction.getSuccessfulPrice())
+                                    .filePath(auction.getImages().get(0).getFilePath())
+                                    .fileName(auction.getImages().get(0).getFileName())
+                                    .auctionEndTime(auction.getAuctionEndTime())
+                                    .build())
+                            .myBidInfo(myBidInfoDTO)
                             .build();
 
                     return notificationResponseDTO;

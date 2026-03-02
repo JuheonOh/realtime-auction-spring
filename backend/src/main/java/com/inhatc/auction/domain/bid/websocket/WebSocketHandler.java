@@ -3,6 +3,7 @@ package com.inhatc.auction.domain.bid.websocket;
 import java.io.IOException;
 import java.net.URI;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -344,6 +345,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
             this.transactionRepository.save(transaction);
             this.auctionRepository.save(auction);
 
+            // 구매자는 WIN, 나머지 입찰 참여자는 ENDED 알림 전송
+            notifyAuctionEndedToBidders(auction, user);
+
             // 즉시 구매 데이터
             WebSocketResponseDTO.BuyNowData buyNowData = WebSocketResponseDTO.BuyNowData.builder()
                     .userId(user.getId())
@@ -360,6 +364,85 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
             sendToAll(auctionRoom, "buy-now", HttpStatus.CREATED, buyNowResponse);
         }
+    }
+
+    private void notifyAuctionEndedToBidders(Auction auction, User buyer) {
+        List<RedisBid> auctionBidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
+        List<Long> bidderIds = auctionBidList
+                .stream()
+                .map(RedisBid::getUserId)
+                .distinct()
+                .toList();
+
+        Set<Long> recipientIds = new LinkedHashSet<>(bidderIds);
+        recipientIds.add(buyer.getId());
+
+        String filePath = null;
+        String fileName = null;
+        if (auction.getImages() != null && !auction.getImages().isEmpty()) {
+            filePath = auction.getImages().get(0).getFilePath();
+            fileName = auction.getImages().get(0).getFileName();
+        }
+
+        for (Long recipientId : recipientIds) {
+            User recipient = userRepository.findById(recipientId).orElse(null);
+            if (recipient == null) {
+                continue;
+            }
+
+            NotificationType notificationType = recipientId.equals(buyer.getId())
+                    ? NotificationType.WIN
+                    : NotificationType.ENDED;
+
+            notificationRepository.findDuplicatedNotification(recipientId, notificationType, auction.getId())
+                    .ifPresent(duplicate -> {
+                        duplicate.markAsDeleted();
+                        notificationRepository.save(duplicate);
+                    });
+
+            Notification endedNotification = Notification.builder()
+                    .type(notificationType)
+                    .auctionId(auction.getId())
+                    .user(recipient)
+                    .build();
+
+            notificationRepository.save(endedNotification);
+
+            NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
+                    .id(endedNotification.getId())
+                    .type(endedNotification.getType())
+                    .isRead(endedNotification.getIsRead())
+                    .time(TimeUtils.getRelativeTimeString(endedNotification.getCreatedAt()))
+                    .auctionInfo(AuctionInfoDTO.builder()
+                            .id(auction.getId())
+                            .title(auction.getTitle())
+                            .currentPrice(auction.getCurrentPrice())
+                            .successfulPrice(auction.getSuccessfulPrice())
+                            .filePath(filePath)
+                            .fileName(fileName)
+                            .auctionEndTime(auction.getAuctionEndTime())
+                            .build())
+                    .myBidInfo(notificationType == NotificationType.ENDED
+                            ? getHighestMyBidInfo(auctionBidList, recipientId)
+                            : null)
+                    .build();
+
+            sseNotificationService.sendNotification(recipientId, notificationResponseDTO);
+        }
+    }
+
+    private MyBidInfoDTO getHighestMyBidInfo(List<RedisBid> bidList, Long userId) {
+        if (bidList == null || userId == null) {
+            return null;
+        }
+
+        return bidList.stream()
+                .filter(bid -> userId.equals(bid.getUserId()))
+                .findFirst()
+                .map(bid -> MyBidInfoDTO.builder()
+                        .bidAmount(bid.getBidAmount())
+                        .build())
+                .orElse(null);
     }
 
     // 경매 종료 알림 전송
