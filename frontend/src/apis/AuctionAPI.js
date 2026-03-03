@@ -20,16 +20,6 @@ export const createAuction = async (formData) => {
   }
 };
 
-// 입찰 생성
-export const createBid = async (auctionId, bidAmount) => {
-  try {
-    const response = await AuctionApi.post(`/api/auctions/${auctionId}/bids`, { bidAmount });
-    return response;
-  } catch (error) {
-    throw error;
-  }
-};
-
 // 즉시 구매
 export const buyNowAuction = async (auctionId) => {
   try {
@@ -81,15 +71,3 @@ export const getAuctionDetail = async (auctionId) => {
     throw error;
   }
 };
-
-// 현재는 사용하지 않는 코드
-// SSE 환경으로의 입찰은 어떤 느낌인지 확인해보기 위해 구현한 코드
-// 입찰 스트림 조회
-// export const getAuctionBidStream = async (auctionId) => {
-//   try {
-//     const eventSource = new EventSource(`${API_BASE_URL}/api/auctions/${auctionId}/bids-stream`);
-//     return eventSource;
-//   } catch (error) {
-//     throw error;
-//   }
-// };
