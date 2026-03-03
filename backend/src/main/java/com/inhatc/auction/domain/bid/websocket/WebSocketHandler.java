@@ -3,7 +3,6 @@ package com.inhatc.auction.domain.bid.websocket;
 import java.io.IOException;
 import java.net.URI;
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,7 +22,6 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.inhatc.auction.domain.auction.entity.Auction;
-import com.inhatc.auction.domain.auction.entity.AuctionStatus;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.bid.dto.request.WebSocketRequestDTO;
 import com.inhatc.auction.domain.bid.dto.response.WebSocketResponseDTO;
@@ -37,9 +35,7 @@ import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
 import com.inhatc.auction.domain.notification.repository.NotificationRepository;
 import com.inhatc.auction.domain.notification.service.SseNotificationService;
-import com.inhatc.auction.domain.transaction.entity.Transaction;
 import com.inhatc.auction.domain.transaction.entity.TransactionStatus;
-import com.inhatc.auction.domain.transaction.repository.TransactionRepository;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
 import com.inhatc.auction.global.jwt.JwtTokenProvider;
@@ -59,7 +55,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final UserRepository userRepository;
     private final AuctionRepository auctionRepository;
     private final RedisBidRepository redisBidRepository;
-    private final TransactionRepository transactionRepository;
     private final NotificationRepository notificationRepository;
 
     private final SseNotificationService sseNotificationService;
@@ -311,52 +306,22 @@ public class WebSocketHandler extends TextWebSocketHandler {
             sendToAll(auctionRoom, "bid", HttpStatus.CREATED, bidResponse);
 
         } else if (type.equals("buy-now")) {
-            // 즉시 구매가 가능한 경매인지 확인
-            if (auction.getBuyNowPrice() == 0) {
-                sendToOne(session, "error", HttpStatus.BAD_REQUEST, "즉시 구매가 가능한 경매가 아닙니다.");
-                return;
+            sendToOne(session, "error", HttpStatus.BAD_REQUEST, "즉시 구매는 HTTP API를 통해 요청해주세요.");
+        } else {
+            sendToOne(session, "error", HttpStatus.BAD_REQUEST, "지원하지 않는 메시지 타입입니다.");
+            }
             }
 
-            // 즉시 구매하려는 경매가 내가 등록한 경매인 경우
-            if (auction.getUser().getId().equals(user.getId())) {
-                sendToOne(session, "error", HttpStatus.BAD_REQUEST, "내가 등록한 경매에는 즉시 구매할 수 없습니다.");
-                return;
-            }
+    public void broadcastBuyNow(Auction auction, User buyer) {
+        Set<WebSocketSession> auctionRoom = auctionRooms.get(auction.getId());
 
-            if (auction.getAuctionEndTime().isBefore(LocalDateTime.now())) {
-                sendToOne(session, "error", HttpStatus.BAD_REQUEST, "종료된 경매에는 즉시 구매할 수 없습니다.");
-                return;
-            }
-
-            // 경매 (종료 시간, 최종 낙찰가, 상태) 업데이트
-            auction.updateAuctionEndTime(LocalDateTime.now());
-            auction.setSuccessfulPrice(auction.getBuyNowPrice());
-            auction.updateStatus(AuctionStatus.ENDED);
-
-            // 최종 거래 내역 저장
-            Transaction transaction = Transaction.builder()
-                    .auction(auction)
-                    .seller(auction.getUser())
-                    .buyer(user)
-                    .finalPrice(auction.getBuyNowPrice())
-                    .status(TransactionStatus.COMPLETED)
-                    .build();
-
-            this.transactionRepository.save(transaction);
-            this.auctionRepository.save(auction);
-
-            // 구매자는 WIN, 나머지 입찰 참여자는 ENDED 알림 전송
-            notifyAuctionEndedToBidders(auction, user);
-
-            // 즉시 구매 데이터
             WebSocketResponseDTO.BuyNowData buyNowData = WebSocketResponseDTO.BuyNowData.builder()
-                    .userId(user.getId())
-                    .nickname(user.getNickname())
+                .userId(buyer.getId())
+                .nickname(buyer.getNickname())
                     .status(TransactionStatus.COMPLETED.toString())
                     .buyNowPrice(auction.getBuyNowPrice())
                     .build();
 
-            // 메시지 + 즉시 구매 데이터
             WebSocketResponseDTO.BuyNowResponse buyNowResponse = WebSocketResponseDTO.BuyNowResponse.builder()
                     .message("즉시 구매가 완료되었습니다.")
                     .buyNowData(buyNowData)
@@ -364,86 +329,6 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
             sendToAll(auctionRoom, "buy-now", HttpStatus.CREATED, buyNowResponse);
         }
-    }
-
-    private void notifyAuctionEndedToBidders(Auction auction, User buyer) {
-        List<RedisBid> auctionBidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
-        List<Long> bidderIds = auctionBidList
-                .stream()
-                .map(RedisBid::getUserId)
-                .distinct()
-                .toList();
-
-        Set<Long> recipientIds = new LinkedHashSet<>(bidderIds);
-        recipientIds.add(buyer.getId());
-
-        String filePath = null;
-        String fileName = null;
-        if (auction.getImages() != null && !auction.getImages().isEmpty()) {
-            filePath = auction.getImages().get(0).getFilePath();
-            fileName = auction.getImages().get(0).getFileName();
-        }
-
-        for (Long recipientId : recipientIds) {
-            User recipient = userRepository.findById(recipientId).orElse(null);
-            if (recipient == null) {
-                continue;
-            }
-
-            NotificationType notificationType = recipientId.equals(buyer.getId())
-                    ? NotificationType.WIN
-                    : NotificationType.ENDED;
-
-            notificationRepository.findDuplicatedNotification(recipientId, notificationType, auction.getId())
-                    .ifPresent(duplicate -> {
-                        duplicate.markAsDeleted();
-                        notificationRepository.save(duplicate);
-                    });
-
-            Notification endedNotification = Notification.builder()
-                    .type(notificationType)
-                    .auctionId(auction.getId())
-                    .user(recipient)
-                    .build();
-
-            notificationRepository.save(endedNotification);
-
-            NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
-                    .id(endedNotification.getId())
-                    .type(endedNotification.getType())
-                    .isRead(endedNotification.getIsRead())
-                    .time(TimeUtils.getRelativeTimeString(endedNotification.getCreatedAt()))
-                    .auctionInfo(AuctionInfoDTO.builder()
-                            .id(auction.getId())
-                            .title(auction.getTitle())
-                            .currentPrice(auction.getCurrentPrice())
-                            .successfulPrice(auction.getSuccessfulPrice())
-                            .filePath(filePath)
-                            .fileName(fileName)
-                            .auctionEndTime(auction.getAuctionEndTime())
-                            .build())
-                    .myBidInfo(notificationType == NotificationType.ENDED
-                            ? getHighestMyBidInfo(auctionBidList, recipientId)
-                            : null)
-                    .build();
-
-            sseNotificationService.sendNotification(recipientId, notificationResponseDTO);
-        }
-    }
-
-    private MyBidInfoDTO getHighestMyBidInfo(List<RedisBid> bidList, Long userId) {
-        if (bidList == null || userId == null) {
-            return null;
-        }
-
-        return bidList.stream()
-                .filter(bid -> userId.equals(bid.getUserId()))
-                .findFirst()
-                .map(bid -> MyBidInfoDTO.builder()
-                        .bidAmount(bid.getBidAmount())
-                        .build())
-                .orElse(null);
-    }
 
     // 경매 종료 알림 전송
     public void broadcastEnded(Auction auction) {
