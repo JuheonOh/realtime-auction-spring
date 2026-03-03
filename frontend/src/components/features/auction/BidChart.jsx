@@ -25,20 +25,20 @@ ChartJS.register(
 );
 
 // 차트 데이터 필터링 함수
-const filterChartData = (data, maxPoints = 20) => {
-  if (data.length <= maxPoints) return data;
+// const filterChartData = (data, maxPoints = 20) => {
+//   if (data.length <= maxPoints) return data;
 
-  // 전체 데이터를 maxPoints 개수만큼 균등하게 선택
-  const interval = (data.length - 1) / (maxPoints - 1);
-  const result = [];
+//   // 전체 데이터를 maxPoints 개수만큼 균등하게 선택
+//   const interval = (data.length - 1) / (maxPoints - 1);
+//   const result = [];
 
-  for (let i = 0; i < maxPoints; i++) {
-    const index = Math.round(i * interval);
-    result.push(data[Math.min(index, data.length - 1)]);
-  }
+//   for (let i = 0; i < maxPoints; i++) {
+//     const index = Math.round(i * interval);
+//     result.push(data[Math.min(index, data.length - 1)]);
+//   }
 
-  return result;
-};
+//   return result;
+// };
 
 export default function BidChart({ bidData, startPrice, userId }) {
   // const filteredData = filterChartData(bidData);
