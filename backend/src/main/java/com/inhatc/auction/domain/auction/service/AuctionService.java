@@ -45,8 +45,6 @@ import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
 import com.inhatc.auction.domain.notification.repository.NotificationRepository;
 import com.inhatc.auction.domain.notification.service.SseNotificationService;
-import com.inhatc.auction.domain.sse.dto.response.SseTransactionResponseDTO;
-import com.inhatc.auction.domain.sse.service.SseService;
 import com.inhatc.auction.domain.transaction.dto.response.TransactionResponseDTO;
 import com.inhatc.auction.domain.transaction.entity.Transaction;
 import com.inhatc.auction.domain.transaction.entity.TransactionStatus;
@@ -73,7 +71,6 @@ public class AuctionService {
   private final CategoryRepository categoryRepository;
   private final FavoriteRepository favoriteRepository;
   private final TransactionRepository transactionRepository;
-  private final SseService sseEmitterService;
   private final JwtTokenProvider jwtTokenProvider;
   private final RedisBidRepository redisBidRepository;
   private final NotificationRepository notificationRepository;
@@ -345,6 +342,14 @@ public class AuctionService {
     Auction auction = this.auctionRepository.findById(auctionId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다"));
 
+    if (auction.getBuyNowPrice() == 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "즉시 구매가 가능한 경매가 아닙니다.");
+    }
+
+    if (auction.getStatus() == AuctionStatus.ENDED) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 종료된 경매입니다.");
+    }
+
     if (auction.getAuctionEndTime().isBefore(LocalDateTime.now())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료된 경매는 즉시 구매할 수 없습니다.");
     }
@@ -370,11 +375,13 @@ public class AuctionService {
 
     this.auctionRepository.save(auction);
 
-    // 구매자는 WIN, 기존 입찰자는 ENDED 알림 전송
+    // 구매자는 BUY_NOW_WIN, 기존 입찰자는 ENDED 알림 전송
     notifyAuctionEndedToBidders(auction, user);
+    // 경매방 참여자에게 즉시구매 결과 브로드캐스트
+    this.webSocketHandler.broadcastBuyNow(auction, user);
   }
 
-  // 즉시구매 종료 시: 구매자는 WIN, 기존 입찰자는 ENDED 알림 전송
+  // 즉시구매 종료 시: 구매자는 BUY_NOW_WIN, 기존 입찰자는 ENDED 알림 전송
   private void notifyAuctionEndedToBidders(Auction auction, User buyer) {
     // 경매의 입찰 참여자 목록 조회
     List<RedisBid> auctionBidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
@@ -402,7 +409,7 @@ public class AuctionService {
       }
 
       NotificationType notificationType = recipientId.equals(buyer.getId())
-          ? NotificationType.WIN
+          ? NotificationType.BUY_NOW_WIN
           : NotificationType.ENDED;
 
       // 동일 타입 중복 알림 soft-delete

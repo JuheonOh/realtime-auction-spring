@@ -1,4 +1,4 @@
-import { getAuctionDetail } from "@apis/AuctionAPI";
+import { buyNowAuction, getAuctionDetail, toggleFavorite } from "@apis/AuctionAPI";
 import httpClientManager from "@apis/HttpClientManager";
 import { getUser } from "@apis/UserAPI";
 import InValidAlert from "@components/common/alerts/InValidAlert";
@@ -17,7 +17,6 @@ import { Clock, Eye, Gavel, Heart, Share2, Tag, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { toggleFavorite } from "@apis/AuctionAPI";
 
 // 입찰 단위
 const bidUnit = (currentPrice) => {
@@ -407,14 +406,25 @@ export default function AuctionDetailPage() {
     // 즉시 구매 요청
     if (window.confirm("즉시 구매하시겠습니까?")) {
       try {
-        const message = {
-          type: "buy-now",
-          accessToken: user.accessToken,
-        };
+        await buyNowAuction(auctionId);
 
-        socketRef.current.send(JSON.stringify(message));
+        // 구매자 화면 즉시 반영 (다른 참여자는 WebSocket 브로드캐스트로 반영)
+        setTransaction((prev) => ({
+          ...prev,
+          userId: user.info.id,
+          nickname: user.info.nickname,
+          status: "COMPLETED",
+          finalPrice: auction.buyNowPrice,
+        }));
+
+        setAuction((prev) => ({
+          ...prev,
+          status: "ENDED",
+          auctionLeftTime: 0,
+          successfulPrice: prev.buyNowPrice,
+        }));
       } catch (err) {
-        setInValid({ bidAmount: err.response.data.message });
+        setInValid({ bidAmount: err?.response?.data?.message || "즉시 구매 처리 중 오류가 발생했습니다." });
         console.error(err);
       }
     }
