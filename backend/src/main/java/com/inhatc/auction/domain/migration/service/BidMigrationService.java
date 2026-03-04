@@ -1,6 +1,7 @@
 package com.inhatc.auction.domain.migration.service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -47,7 +48,7 @@ public class BidMigrationService {
                         .bidTime(bid.getBidTime())
                         .build();
 
-                redisBidRepository.save(redisBid);
+                redisBidRepository.save(Objects.requireNonNull(redisBid));
             }
         }
     }
@@ -71,8 +72,14 @@ public class BidMigrationService {
                     redisBid.getBidAmount());
 
             if (!exists) {
-                Optional<Auction> auction = auctionRepository.findById(redisBid.getAuctionId());
-                Optional<User> user = userRepository.findById(redisBid.getUserId());
+                Long auctionId = redisBid.getAuctionId();
+                Long userId = redisBid.getUserId();
+                if (auctionId == null || userId == null) {
+                    log.warn("Redis bid has null auctionId or userId. redisBidId={}", redisBid.getId());
+                    continue;
+                }
+                Optional<Auction> auction = auctionRepository.findById(auctionId);
+                Optional<User> user = userRepository.findById(userId);
 
                 if (auction.isPresent() && user.isPresent()) {
                     Bid bid = Bid.builder()
@@ -82,7 +89,7 @@ public class BidMigrationService {
                             .bidTime(redisBid.getBidTime())
                             .build();
 
-                    bidRepository.save(bid);
+                    bidRepository.save(Objects.requireNonNull(bid));
                 }
             }
         }
