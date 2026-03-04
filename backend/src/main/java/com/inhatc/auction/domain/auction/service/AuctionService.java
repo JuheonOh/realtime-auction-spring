@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -16,6 +17,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,7 +80,7 @@ public class AuctionService {
   private final WebSocketHandler webSocketHandler;
 
   @Transactional(readOnly = true)
-  public AuctionDetailResponseDTO getAuctionDetail(HttpServletRequest request, Long auctionId) {
+  public AuctionDetailResponseDTO getAuctionDetail(@NonNull HttpServletRequest request, @NonNull Long auctionId) {
     // 경매 조회
     Auction auction = this.auctionRepository.findById(auctionId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다."));
@@ -93,9 +95,12 @@ public class AuctionService {
     // 로그인된 경우 관심 경매 여부 확인
     if (request.getHeader("Authorization") != null) {
       String accessToken = jwtTokenProvider.getTokenFromRequest(request);
-      Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
-      User user = userRepository.findById(userId).get();
-      isFavorite = favoriteRepository.existsByUserAndAuction(user, auction);
+      if (accessToken != null) {
+        Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
+        isFavorite = favoriteRepository.existsByUserAndAuction(user, auction);
+      }
     }
 
     // 관심 개수
@@ -128,13 +133,17 @@ public class AuctionService {
     // Redis 입찰 내역을 DTO로 변환
     List<BidResponseDTO> bidList = redisBids.stream()
         .map((RedisBid bid) -> {
-          User bidder = userRepository.findById(bid.getUserId())
+          Long bidderId = bid.getUserId();
+          if (bidderId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "입찰자 ID가 누락되었습니다.");
+          }
+          User bidder = userRepository.findById(bidderId)
               .orElseThrow(() -> new ResponseStatusException(
                   HttpStatus.NOT_FOUND,
                   "입찰자 정보를 찾을 수 없습니다."));
 
           return BidResponseDTO.builder()
-              .userId(bid.getUserId())
+              .userId(bidderId)
               .nickname(bidder.getNickname())
               .bidAmount(bid.getBidAmount())
               .bidTime(bid.getBidTime())
@@ -238,6 +247,13 @@ public class AuctionService {
     Long categoryId = requestDTO.getCategoryId();
     List<MultipartFile> multipartFiles = requestDTO.getImages();
 
+    if (userId == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId는 필수값입니다");
+    }
+    if (categoryId == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "categoryId는 필수값입니다");
+    }
+
     User user = this.userRepository.findById(userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
@@ -320,7 +336,7 @@ public class AuctionService {
   }
 
   @Transactional
-  public void buyNowAuction(HttpServletRequest request, Long auctionId) {
+  public void buyNowAuction(@NonNull HttpServletRequest request, @NonNull Long auctionId) {
     // Authorization 헤더가 없는 경우
     if (request.getHeader("Authorization") == null) {
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다");
@@ -371,7 +387,7 @@ public class AuctionService {
         .finalPrice(auction.getBuyNowPrice())
         .status(TransactionStatus.COMPLETED)
         .build();
-    this.transactionRepository.save(transaction);
+    this.transactionRepository.save(Objects.requireNonNull(transaction));
 
     this.auctionRepository.save(auction);
 
@@ -403,6 +419,9 @@ public class AuctionService {
     }
 
     for (Long recipientId : recipientIds) {
+      if (recipientId == null) {
+        continue;
+      }
       User recipient = userRepository.findById(recipientId).orElse(null);
       if (recipient == null) {
         continue;
@@ -426,7 +445,7 @@ public class AuctionService {
           .auctionId(auction.getId())
           .build();
 
-      notificationRepository.save(endedNotification);
+      notificationRepository.save(Objects.requireNonNull(endedNotification));
 
       NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
           .id(endedNotification.getId())
@@ -448,7 +467,7 @@ public class AuctionService {
           .build();
 
       // SSE 푸시 전송
-      sseNotificationService.sendNotification(recipientId, notificationResponseDTO);
+      sendNotificationSafely(recipientId, notificationResponseDTO);
     }
   }
 
@@ -472,6 +491,9 @@ public class AuctionService {
     }
 
     for (Long loserId : loserIds) {
+      if (loserId == null) {
+        continue;
+      }
       User loser = userRepository.findById(loserId).orElse(null);
       if (loser == null) {
         continue;
@@ -489,7 +511,7 @@ public class AuctionService {
           .auctionId(auction.getId())
           .build();
 
-      notificationRepository.save(endedTimeNotification);
+      notificationRepository.save(Objects.requireNonNull(endedTimeNotification));
 
       NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
           .id(endedTimeNotification.getId())
@@ -508,7 +530,7 @@ public class AuctionService {
           .myBidInfo(getHighestMyBidInfo(bidList, loserId))
           .build();
 
-      sseNotificationService.sendNotification(loserId, notificationResponseDTO);
+      sendNotificationSafely(loserId, notificationResponseDTO);
     }
   }
 
@@ -547,7 +569,12 @@ public class AuctionService {
         this.auctionRepository.save(auction);
       } else {
         // 입찰자가 있는 경우
-        Optional<User> winner = userRepository.findById(highestBid.getUserId());
+        Long highestBidUserId = highestBid.getUserId();
+        if (highestBidUserId == null) {
+          log.warn("Auction ID: {} has highest bid without userId", auction.getId());
+          continue;
+        }
+        Optional<User> winner = userRepository.findById(highestBidUserId);
 
         if (winner.isPresent()) {
           auction.updateStatus(AuctionStatus.ENDED);
@@ -561,7 +588,7 @@ public class AuctionService {
               .status(TransactionStatus.COMPLETED)
               .build();
 
-          this.transactionRepository.save(transaction);
+          this.transactionRepository.save(Objects.requireNonNull(transaction));
           this.auctionRepository.save(auction);
           log.info("Auction ID: {} ended", auction.getId());
 
@@ -572,7 +599,7 @@ public class AuctionService {
               .auctionId(auction.getId())
               .build();
 
-          this.notificationRepository.save(notification);
+          this.notificationRepository.save(Objects.requireNonNull(notification));
 
           NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
               .id(notification.getId())
@@ -590,10 +617,15 @@ public class AuctionService {
               .build();
 
           // 낙찰자에게 SSE 알림 전송
-          this.sseNotificationService.sendNotification(winner.get().getId(), notificationResponseDTO);
+          Long winnerId = winner.get().getId();
+          if (winnerId == null) {
+            log.warn("Auction ID: {} has winner without userId", auction.getId());
+            continue;
+          }
+          sendNotificationSafely(winnerId, notificationResponseDTO);
 
           // 비낙찰자 ENDED_TIME 알림 및 WebSocket 종료 브로드캐스트
-          notifyAuctionEndedByTimeToLosers(auction, winner.get().getId(), bidList);
+          notifyAuctionEndedByTimeToLosers(auction, winnerId, bidList);
           this.webSocketHandler.broadcastEnded(auction);
         }
       }
@@ -602,8 +634,11 @@ public class AuctionService {
 
   // 관심 경매 등록/해제
   @Transactional
-  public void favoriteAuction(HttpServletRequest request, Long auctionId) {
+  public void favoriteAuction(@NonNull HttpServletRequest request, @NonNull Long auctionId) {
     String accessToken = jwtTokenProvider.getTokenFromRequest(request);
+    if (accessToken == null) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다");
+    }
     Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
 
     User user = this.userRepository.findById(userId)
@@ -618,7 +653,13 @@ public class AuctionService {
       this.favoriteRepository.deleteByUserAndAuction(user, auction);
     } else {
       Favorite favorite = Favorite.builder().user(user).auction(auction).build();
-      this.favoriteRepository.save(favorite);
+      this.favoriteRepository.save(Objects.requireNonNull(favorite));
     }
+  }
+
+  private void sendNotificationSafely(Long userId, NotificationResponseDTO dto) {
+    sseNotificationService.sendNotification(
+        Objects.requireNonNull(userId),
+        Objects.requireNonNull(dto));
   }
 }

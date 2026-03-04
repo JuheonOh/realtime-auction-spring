@@ -4,6 +4,7 @@ import java.util.HashMap;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,8 +42,8 @@ public class AuctionController {
 
     // 경매 상세 조회
     @GetMapping("/{auctionId}")
-    public ResponseEntity<?> getAuctionDetail(HttpServletRequest request,
-            @PathVariable("auctionId") Long auctionId) {
+    public ResponseEntity<?> getAuctionDetail(@NonNull HttpServletRequest request,
+            @PathVariable("auctionId") @NonNull Long auctionId) {
         AuctionDetailResponseDTO auctionDetailResponseDTO = auctionService.getAuctionDetail(request, auctionId);
         return ResponseEntity.status(HttpStatus.OK).body(auctionDetailResponseDTO);
     }
@@ -60,7 +61,8 @@ public class AuctionController {
 
     // 즉시 구매
     @PostMapping("/{auctionId}/buy-now")
-    public ResponseEntity<?> buyNowAuction(HttpServletRequest request, @PathVariable("auctionId") Long auctionId) {
+    public ResponseEntity<?> buyNowAuction(@NonNull HttpServletRequest request,
+            @PathVariable("auctionId") @NonNull Long auctionId) {
         auctionService.buyNowAuction(request, auctionId);
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -68,7 +70,8 @@ public class AuctionController {
 
     // 경매 관심 등록
     @PostMapping("/{auctionId}/favorites")
-    public ResponseEntity<?> favoriteAuction(HttpServletRequest request, @PathVariable("auctionId") Long auctionId) {
+    public ResponseEntity<?> favoriteAuction(@NonNull HttpServletRequest request,
+            @PathVariable("auctionId") @NonNull Long auctionId) {
         auctionService.favoriteAuction(request, auctionId);
 
         return ResponseEntity.status(HttpStatus.CREATED).build();
