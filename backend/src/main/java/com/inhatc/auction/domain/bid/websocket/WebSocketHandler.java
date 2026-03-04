@@ -5,6 +5,7 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -143,8 +144,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     return;
                 }
             } else {
+                Long highestBidderId = highestBid.getUserId();
+                if (highestBidderId == null) {
+                    sendToOne(session, "error", HttpStatus.BAD_REQUEST, "현재 최고입찰자 정보를 확인할 수 없습니다.");
+                    return;
+                }
                 // 현재 최고입찰자가 본인인 경우 입찰할 수 없음
-                if (highestBid.getUserId().equals(user.getId())) {
+                if (highestBidderId.equals(user.getId())) {
                     sendToOne(session, "error", HttpStatus.BAD_REQUEST, "현재 고객님이 최고입찰자입니다.");
                     return;
                 }
@@ -164,7 +170,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     .bidTime(LocalDateTime.now())
                     .build();
 
-            this.redisBidRepository.save(newBid);
+            this.redisBidRepository.save(Objects.requireNonNull(newBid));
 
             // 현재 경매 가격 업데이트
             auction.updateCurrentPrice(bidAmount);
@@ -193,7 +199,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     .build();
 
             // 알림 저장
-            this.notificationRepository.save(bidNotification);
+            this.notificationRepository.save(Objects.requireNonNull(bidNotification));
 
             // 해당 경매에 이전 알림 중 OUTBID 알림이 있는 경우 삭제
             Optional<Notification> duplicateOutbidNotificationOptional = this.notificationRepository
@@ -201,8 +207,9 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
             // 중복 알림이 있는 경우 삭제
             if (duplicateOutbidNotificationOptional.isPresent()) {
-                duplicateOutbidNotificationOptional.get().markAsDeleted();
-                this.notificationRepository.save(duplicateOutbidNotificationOptional.get());
+                Notification duplicateOutbidNotification = duplicateOutbidNotificationOptional.get();
+                duplicateOutbidNotification.markAsDeleted();
+                this.notificationRepository.save(Objects.requireNonNull(duplicateOutbidNotification));
             }
 
             // BID 알림 전송
@@ -235,12 +242,20 @@ public class WebSocketHandler extends TextWebSocketHandler {
                     .previousBidInfo(previousBidInfoDTO)
                     .build();
 
-            sseNotificationService.sendNotification(userId, bidDTO);
+            sendNotificationSafely(userId, bidDTO);
 
             // 이전 최고 입찰자가 있는 경우 이전 최고 입찰자에게 OUTBID 알림
             if (highestBid != null) {
                 Long previousBidderId = highestBid.getUserId();
+                if (previousBidderId == null) {
+                    sendToOne(session, "error", HttpStatus.BAD_REQUEST, "이전 최고입찰자 정보를 확인할 수 없습니다.");
+                    return;
+                }
                 User previousBidder = userRepository.findById(previousBidderId).orElse(null);
+                if (previousBidder == null) {
+                    sendToOne(session, "error", HttpStatus.NOT_FOUND, "이전 최고입찰자를 찾을 수 없습니다.");
+                    return;
+                }
 
                 // OUTBID 알림 생성
                 Notification outbidNotification = Notification.builder()
@@ -255,12 +270,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
 
                 // 중복 알림이 있는 경우 삭제
                 if (duplicateOutbidNotification.isPresent()) {
-                    duplicateOutbidNotification.get().markAsDeleted();
-                    this.notificationRepository.save(duplicateOutbidNotification.get());
+                    Notification duplicateNotification = duplicateOutbidNotification.get();
+                    duplicateNotification.markAsDeleted();
+                    this.notificationRepository.save(Objects.requireNonNull(duplicateNotification));
                 }
 
                 // 알림 저장
-                this.notificationRepository.save(outbidNotification);
+                this.notificationRepository.save(Objects.requireNonNull(outbidNotification));
 
                 // 마지막 입찰 정보
                 MyBidInfoDTO myBidInfoDTO = MyBidInfoDTO.builder()
@@ -284,7 +300,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                         .myBidInfo(myBidInfoDTO)
                         .build();
 
-                this.sseNotificationService.sendNotification(previousBidderId, outbidDTO);
+                sendNotificationSafely(previousBidderId, outbidDTO);
             }
 
             // 입찰 데이터
@@ -350,7 +366,15 @@ public class WebSocketHandler extends TextWebSocketHandler {
         }
 
         // 최고 입찰자 정보 조회
-        User highestBidder = userRepository.findById(highestBid.getUserId()).orElse(null);
+        Long highestBidderId = highestBid.getUserId();
+        if (highestBidderId == null) {
+            WebSocketResponseDTO.Message message = WebSocketResponseDTO.Message.builder()
+                    .message("최고 입찰자 정보를 확인할 수 없습니다.")
+                    .build();
+            sendToAll(auctionRoom, "ended", HttpStatus.BAD_REQUEST, message);
+            return;
+        }
+        User highestBidder = userRepository.findById(highestBidderId).orElse(null);
         if (highestBidder != null) {
             WebSocketResponseDTO.TransactionData transactionData = WebSocketResponseDTO.TransactionData.builder()
                     .userId(highestBidder.getId())
@@ -403,7 +427,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 .data(msg)
                 .build();
 
-        session.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
+        session.sendMessage(Objects.requireNonNull(toTextMessage(Objects.requireNonNull(response))));
     }
 
     // 단체 메시지 전송
@@ -417,12 +441,23 @@ public class WebSocketHandler extends TextWebSocketHandler {
         if (auctionRoom != null) {
             for (WebSocketSession session : auctionRoom) {
                 try {
-                    session.sendMessage(new TextMessage(objectMapper.writeValueAsString(response)));
+                    session.sendMessage(Objects.requireNonNull(toTextMessage(Objects.requireNonNull(response))));
                 } catch (IOException e) {
                     log.error("웹소켓 통신 에러 [세션ID: {}] : {}", session.getId(), e.getMessage(), e);
                 }
             }
         }
+    }
+
+    private void sendNotificationSafely(Long userId, NotificationResponseDTO notificationResponseDTO) {
+        sseNotificationService.sendNotification(
+                Objects.requireNonNull(userId),
+                Objects.requireNonNull(notificationResponseDTO));
+    }
+
+    private @NonNull TextMessage toTextMessage(@NonNull WebSocketResponseDTO response) throws IOException {
+        String payload = Objects.requireNonNull(objectMapper.writeValueAsString(response));
+        return Objects.requireNonNull(new TextMessage(payload));
     }
 
     // URI에서 경매 ID 추출
