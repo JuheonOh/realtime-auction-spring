@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -85,7 +86,7 @@ class AuctionApplicationBuyerNotificationTypeTests {
         Auction auction = createAuctionWithImage(auctionId, 12000L);
 
         // 토큰 파싱 -> 알림 조회 -> 경매 조회 흐름 mock 설정
-        when(jwtTokenProvider.getTokenFromRequest(request)).thenReturn(accessToken);
+        when(jwtTokenProvider.getTokenFromRequest(Objects.requireNonNull(request))).thenReturn(accessToken);
         when(jwtTokenProvider.getUserIdFromToken(accessToken)).thenReturn(userId);
         when(notificationRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId))
                 .thenReturn(List.of(notification));
@@ -96,8 +97,9 @@ class AuctionApplicationBuyerNotificationTypeTests {
 
         // then
         assertThat(result).hasSize(1);
-        NotificationResponseDTO response = result.get(0);
+        NotificationResponseDTO response = result.stream().findFirst().orElseThrow();
         assertThat(response).isNotNull();
+        assertThat(response.getAuctionInfo()).isNotNull();
         assertThat(response.getType()).isEqualTo(NotificationType.WIN);
         assertThat(response.getAuctionInfo().getSuccessfulPrice()).isEqualTo(12000L);
         assertThat(response.getMyBidInfo()).isNull();
@@ -120,7 +122,7 @@ class AuctionApplicationBuyerNotificationTypeTests {
         Auction auction = createAuctionWithImage(auctionId, 25000L);
 
         // 토큰 파싱 -> 알림 조회 -> 경매 조회 흐름 mock 설정
-        when(jwtTokenProvider.getTokenFromRequest(request)).thenReturn(accessToken);
+        when(jwtTokenProvider.getTokenFromRequest(Objects.requireNonNull(request))).thenReturn(accessToken);
         when(jwtTokenProvider.getUserIdFromToken(accessToken)).thenReturn(userId);
         when(notificationRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId))
                 .thenReturn(List.of(notification));
@@ -131,8 +133,9 @@ class AuctionApplicationBuyerNotificationTypeTests {
 
         // then
         assertThat(result).hasSize(1);
-        NotificationResponseDTO response = result.get(0);
+        NotificationResponseDTO response = result.stream().findFirst().orElseThrow();
         assertThat(response).isNotNull();
+        assertThat(response.getAuctionInfo()).isNotNull();
         assertThat(response.getType()).isEqualTo(NotificationType.BUY_NOW_WIN);
         assertThat(response.getAuctionInfo().getSuccessfulPrice()).isEqualTo(25000L);
         assertThat(response.getMyBidInfo()).isNull();
@@ -149,9 +152,9 @@ class AuctionApplicationBuyerNotificationTypeTests {
                 .type(type)
                 .build();
 
-        ReflectionTestUtils.setField(notification, "id", id);
-        ReflectionTestUtils.setField(notification, "createdAt", LocalDateTime.now().minusMinutes(1));
-        ReflectionTestUtils.setField(notification, "updatedAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(Objects.requireNonNull(notification), "id", id);
+        ReflectionTestUtils.setField(Objects.requireNonNull(notification), "createdAt", LocalDateTime.now().minusMinutes(1));
+        ReflectionTestUtils.setField(Objects.requireNonNull(notification), "updatedAt", LocalDateTime.now());
 
         return notification;
     }
@@ -187,7 +190,7 @@ class AuctionApplicationBuyerNotificationTypeTests {
                 .status(AuctionStatus.ACTIVE)
                 .build();
 
-        ReflectionTestUtils.setField(auction, "id", auctionId);
+        ReflectionTestUtils.setField(Objects.requireNonNull(auction), "id", auctionId);
 
         Image image = Image.builder()
                 .auction(auction)
