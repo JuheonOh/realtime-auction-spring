@@ -1,8 +1,10 @@
 package com.inhatc.auction.domain.auth.service;
 
 import java.util.HashMap;
+import java.util.Objects;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -39,7 +41,7 @@ public class AuthService {
      * 로그인
      */
     @Transactional
-    public AuthResponseDTO login(AuthRequestDTO requestDTO) {
+    public AuthResponseDTO login(@NonNull AuthRequestDTO requestDTO) {
         // 이메일과 비밀번호 확인
         User user = this.userRepository.findByEmail(requestDTO.getEmail())
                 .orElseThrow(() -> {
@@ -64,7 +66,7 @@ public class AuthService {
 
         // 기존 토큰이 있다면 삭제
         this.authRedisRepository.findByRefreshToken(refreshToken)
-                .ifPresent(auth -> this.authRedisRepository.delete(auth));
+                .ifPresent(auth -> this.authRedisRepository.delete(Objects.requireNonNull(auth)));
 
         // 리프레시 토큰 만료 시간
         Long ttl = this.jwtTokenProvider.getJwtRefreshTokenExpirationTime() / 1000;
@@ -76,7 +78,7 @@ public class AuthService {
                 .ttl(ttl)
                 .build();
 
-        this.authRedisRepository.save(auth);
+        this.authRedisRepository.save(Objects.requireNonNull(auth));
 
         return AuthResponseDTO.builder()
                 .tokenType(JwtHeader.TOKEN_TYPE.getValue())
@@ -89,7 +91,7 @@ public class AuthService {
      * 회원가입
      */
     @Transactional
-    public void signup(UserRequestDTO requestDTO) {
+    public void signup(@NonNull UserRequestDTO requestDTO) {
         log.info("회원가입 요청 : {}", requestDTO);
 
         // 휴대폰 번호 하이픈 제거
@@ -109,17 +111,17 @@ public class AuthService {
                 .build();
 
         // 저장
-        this.userRepository.save(user);
+        this.userRepository.save(Objects.requireNonNull(user));
     }
 
     /**
      * 로그아웃
      */
     @Transactional
-    public void logout(String refreshToken) {
+    public void logout(@NonNull String refreshToken) {
         try {
             this.authRedisRepository.findByRefreshToken(refreshToken)
-                    .ifPresent(auth -> this.authRedisRepository.delete(auth));
+                    .ifPresent(auth -> this.authRedisRepository.delete(Objects.requireNonNull(auth)));
         } catch (ExpiredJwtException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 만료되었습니다.");
         }
@@ -129,7 +131,7 @@ public class AuthService {
      * Token 갱신
      */
     @Transactional
-    public String refreshToken(String refreshToken) {
+    public String refreshToken(@NonNull String refreshToken) {
         // REFRESH_TOKEN 만료 확인 및 ACCESS_TOKEN 갱신
         try {
             if (this.jwtTokenProvider.validateToken(refreshToken)) {
@@ -137,7 +139,11 @@ public class AuthService {
                         .orElseThrow(() -> new ResponseStatusException(
                                 HttpStatus.UNAUTHORIZED, "로그인이 필요합니다. (REFRESH_TOKEN)"));
 
-                User user = this.userRepository.findById(auth.getUserId())
+                Long userId = auth.getUserId();
+                if (userId == null) {
+                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 리프레시 토큰입니다.");
+                }
+                User user = this.userRepository.findById(userId)
                         .orElseThrow(() -> new ResponseStatusException(
                                 HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
 

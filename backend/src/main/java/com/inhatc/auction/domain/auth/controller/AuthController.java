@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,25 +30,25 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@Valid @RequestBody AuthRequestDTO requestDTO) {
+    public ResponseEntity<?> login(@Valid @RequestBody @NonNull AuthRequestDTO requestDTO) {
         AuthResponseDTO responseDTO = this.authService.login(requestDTO);
         return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@Valid @RequestBody UserRequestDTO requestDTO) {
+    public ResponseEntity<?> signup(@Valid @RequestBody @NonNull UserRequestDTO requestDTO) {
         this.authService.signup(requestDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(null);
     }
 
     @GetMapping("/logout")
-    public ResponseEntity<?> logout(@RequestHeader("REFRESH_TOKEN") String refreshToken) {
+    public ResponseEntity<?> logout(@RequestHeader("REFRESH_TOKEN") @NonNull String refreshToken) {
         this.authService.logout(refreshToken);
         return ResponseEntity.status(HttpStatus.OK).body(null);
     }
 
     @GetMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@RequestHeader("REFRESH_TOKEN") String refreshToken) {
+    public ResponseEntity<?> refreshToken(@RequestHeader("REFRESH_TOKEN") @NonNull String refreshToken) {
         String newAccessToken = this.authService.refreshToken(refreshToken);
 
         Map<String, String> response = new HashMap<>();
