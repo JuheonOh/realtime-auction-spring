@@ -248,59 +248,59 @@ public class WebSocketHandler extends TextWebSocketHandler {
             if (highestBid != null) {
                 Long previousBidderId = highestBid.getUserId();
                 if (previousBidderId == null) {
-                    sendToOne(session, "error", HttpStatus.BAD_REQUEST, "이전 최고입찰자 정보를 확인할 수 없습니다.");
-                    return;
+                    log.warn("이전 최고입찰자 ID가 없어 OUTBID 알림을 생략합니다. auctionId={}", auctionId);
+                } else {
+                    User previousBidder = userRepository.findById(previousBidderId).orElse(null);
+                    if (previousBidder == null) {
+                        log.warn("이전 최고입찰자 조회 실패로 OUTBID 알림을 생략합니다. auctionId={}, userId={}", auctionId,
+                                previousBidderId);
+                    } else {
+                        // OUTBID 알림 생성
+                        Notification outbidNotification = Notification.builder()
+                                .type(NotificationType.OUTBID)
+                                .auctionId(auctionId)
+                                .user(previousBidder)
+                                .build();
+
+                        // 중복 알림 조회
+                        Optional<Notification> duplicateOutbidNotification = this.notificationRepository
+                                .findDuplicatedNotification(previousBidderId, NotificationType.OUTBID, auctionId);
+
+                        // 중복 알림이 있는 경우 삭제
+                        if (duplicateOutbidNotification.isPresent()) {
+                            Notification duplicateNotification = duplicateOutbidNotification.get();
+                            duplicateNotification.markAsDeleted();
+                            this.notificationRepository.save(Objects.requireNonNull(duplicateNotification));
+                        }
+
+                        // 알림 저장
+                        this.notificationRepository.save(Objects.requireNonNull(outbidNotification));
+
+                        // 마지막 입찰 정보
+                        MyBidInfoDTO myBidInfoDTO = MyBidInfoDTO.builder()
+                                .bidAmount(previousBidAmount)
+                                .build();
+
+                        // OUTBID 알림 전송
+                        NotificationResponseDTO outbidDTO = NotificationResponseDTO.builder()
+                                .id(outbidNotification.getId())
+                                .type(outbidNotification.getType())
+                                .isRead(outbidNotification.getIsRead())
+                                .time(TimeUtils.getRelativeTimeString(outbidNotification.getCreatedAt()))
+                                .auctionInfo(AuctionInfoDTO.builder()
+                                        .id(auctionId)
+                                        .title(auction.getTitle())
+                                        .currentPrice(auction.getCurrentPrice())
+                                        .filePath(auction.getImages().get(0).getFilePath())
+                                        .fileName(auction.getImages().get(0).getFileName())
+                                        .auctionEndTime(auction.getAuctionEndTime())
+                                        .build())
+                                .myBidInfo(myBidInfoDTO)
+                                .build();
+
+                        sendNotificationSafely(previousBidderId, outbidDTO);
+                    }
                 }
-                User previousBidder = userRepository.findById(previousBidderId).orElse(null);
-                if (previousBidder == null) {
-                    sendToOne(session, "error", HttpStatus.NOT_FOUND, "이전 최고입찰자를 찾을 수 없습니다.");
-                    return;
-                }
-
-                // OUTBID 알림 생성
-                Notification outbidNotification = Notification.builder()
-                        .type(NotificationType.OUTBID)
-                        .auctionId(auctionId)
-                        .user(previousBidder)
-                        .build();
-
-                // 중복 알림 조회
-                Optional<Notification> duplicateOutbidNotification = this.notificationRepository
-                        .findDuplicatedNotification(previousBidderId, NotificationType.OUTBID, auctionId);
-
-                // 중복 알림이 있는 경우 삭제
-                if (duplicateOutbidNotification.isPresent()) {
-                    Notification duplicateNotification = duplicateOutbidNotification.get();
-                    duplicateNotification.markAsDeleted();
-                    this.notificationRepository.save(Objects.requireNonNull(duplicateNotification));
-                }
-
-                // 알림 저장
-                this.notificationRepository.save(Objects.requireNonNull(outbidNotification));
-
-                // 마지막 입찰 정보
-                MyBidInfoDTO myBidInfoDTO = MyBidInfoDTO.builder()
-                        .bidAmount(previousBidAmount)
-                        .build();
-
-                // OUTBID 알림 전송
-                NotificationResponseDTO outbidDTO = NotificationResponseDTO.builder()
-                        .id(outbidNotification.getId())
-                        .type(outbidNotification.getType())
-                        .isRead(outbidNotification.getIsRead())
-                        .time(TimeUtils.getRelativeTimeString(outbidNotification.getCreatedAt()))
-                        .auctionInfo(AuctionInfoDTO.builder()
-                                .id(auctionId)
-                                .title(auction.getTitle())
-                                .currentPrice(auction.getCurrentPrice())
-                                .filePath(auction.getImages().get(0).getFilePath())
-                                .fileName(auction.getImages().get(0).getFileName())
-                                .auctionEndTime(auction.getAuctionEndTime())
-                                .build())
-                        .myBidInfo(myBidInfoDTO)
-                        .build();
-
-                sendNotificationSafely(previousBidderId, outbidDTO);
             }
 
             // 입찰 데이터
