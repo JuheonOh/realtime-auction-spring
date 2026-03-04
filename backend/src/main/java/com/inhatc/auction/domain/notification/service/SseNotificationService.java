@@ -5,9 +5,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,10 +44,10 @@ public class SseNotificationService {
     private final NotificationService notificationService;
 
     private final Map<Long, List<SseEmitter>> emitters = new ConcurrentHashMap<>(); // 사용자 ID에 따른 SseEmitter 리스트
-    private static final Long DEFAULT_TIMEOUT = 1000L * 60 * 10; // 10분
+    private static final long DEFAULT_TIMEOUT = 1000L * 60 * 10; // 10분
 
     // SSE 연결 생성
-    public SseEmitter subscribe(HttpServletRequest request, Long userId) {
+    public SseEmitter subscribe(@NonNull HttpServletRequest request, @NonNull Long userId) {
         String accessToken = jwtTokenProvider.getTokenFromRequest(request);
         if (accessToken == null) {
             log.error("액세스 토큰이 없습니다.");
@@ -53,7 +55,7 @@ public class SseNotificationService {
         }
 
         Long tokenUserId = jwtTokenProvider.getUserIdFromToken(accessToken);
-        if (!jwtTokenProvider.validateToken(accessToken) || userId != tokenUserId) {
+        if (!jwtTokenProvider.validateToken(accessToken) || !userId.equals(tokenUserId)) {
             log.error("토큰 검증 실패 또는 사용자 ID 불일치");
             return null;
         }
@@ -88,7 +90,7 @@ public class SseNotificationService {
     }
 
     // 알림 전송
-    public void sendNotification(Long userId, NotificationResponseDTO notificationResponseDTO) {
+    public void sendNotification(@NonNull Long userId, @NonNull NotificationResponseDTO notificationResponseDTO) {
         List<SseEmitter> userEmitters = emitters.get(userId);
         if (userEmitters == null || userEmitters.isEmpty()) {
             return;
@@ -151,7 +153,7 @@ public class SseNotificationService {
                         .type(NotificationType.REMINDER)
                         .build();
 
-                notificationRepository.save(notification);
+                notificationRepository.save(Objects.requireNonNull(notification));
 
                 NotificationResponseDTO notificationDTO = NotificationResponseDTO.builder()
                         .id(notification.getId())
@@ -168,7 +170,12 @@ public class SseNotificationService {
                                 .build())
                         .build();
 
-                this.sendNotification(favorite.getUser().getId(), notificationDTO);
+                Long favoriteUserId = favorite.getUser().getId();
+                if (favoriteUserId == null) {
+                    log.warn("Favorite userId is null for auctionId={}", auction.getId());
+                    continue;
+                }
+                this.sendNotification(favoriteUserId, Objects.requireNonNull(notificationDTO));
             }
         }
     }

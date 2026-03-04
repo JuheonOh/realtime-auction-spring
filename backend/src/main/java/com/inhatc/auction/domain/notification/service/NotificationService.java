@@ -2,9 +2,11 @@ package com.inhatc.auction.domain.notification.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
@@ -36,9 +38,12 @@ public class NotificationService {
     private final RedisBidRepository redisBidRepository;
 
     // 사용자의 알림 목록 조회
-    public List<NotificationResponseDTO> getNotifications(HttpServletRequest request) {
-        String accessToken = jwtTokenProvider.getTokenFromRequest(request);
-        Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+    public List<NotificationResponseDTO> getNotifications(@NonNull HttpServletRequest request) {
+        Optional<Long> userIdOptional = extractUserId(request);
+        if (userIdOptional.isEmpty()) {
+            return List.of();
+        }
+        Long userId = userIdOptional.get();
 
         log.info("userId: {}", userId);
 
@@ -50,6 +55,9 @@ public class NotificationService {
             String time = TimeUtils.getRelativeTimeString(createdAt);
 
             Long auctionId = notification.getAuctionId();
+            if (auctionId == null) {
+                return null;
+            }
             Optional<Auction> auctionOptional = auctionRepository.findById(auctionId);
 
             // 경매 정보가 없는 경우
@@ -225,13 +233,16 @@ public class NotificationService {
             }
 
             return null;
-        }).collect(Collectors.toList());
+        }).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
     // 모두 읽음 처리
-    public void markAsReadAll(HttpServletRequest request) {
-        String accessToken = jwtTokenProvider.getTokenFromRequest(request);
-        Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+    public void markAsReadAll(@NonNull HttpServletRequest request) {
+        Optional<Long> userIdOptional = extractUserId(request);
+        if (userIdOptional.isEmpty()) {
+            return;
+        }
+        Long userId = userIdOptional.get();
 
         List<Notification> notifications = notificationRepository.findByUserIdAndIsReadFalse(userId);
         notifications.forEach(notification -> {
@@ -242,9 +253,12 @@ public class NotificationService {
     }
 
     // 알림 읽음 처리
-    public void markAsRead(HttpServletRequest request, Long notificationId) {
-        String accessToken = jwtTokenProvider.getTokenFromRequest(request);
-        Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+    public void markAsRead(@NonNull HttpServletRequest request, Long notificationId) {
+        Optional<Long> userIdOptional = extractUserId(request);
+        if (userIdOptional.isEmpty()) {
+            return;
+        }
+        Long userId = userIdOptional.get();
 
         notificationRepository.findByIdAndUserIdAndIsDeletedFalse(notificationId, userId).ifPresent(notification -> {
             notification.markAsRead();
@@ -253,9 +267,12 @@ public class NotificationService {
     }
 
     // 모든 알림 삭제 처리
-    public void deleteNotificationAll(HttpServletRequest request) {
-        String accessToken = jwtTokenProvider.getTokenFromRequest(request);
-        Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+    public void deleteNotificationAll(@NonNull HttpServletRequest request) {
+        Optional<Long> userIdOptional = extractUserId(request);
+        if (userIdOptional.isEmpty()) {
+            return;
+        }
+        Long userId = userIdOptional.get();
 
         List<Notification> notifications = notificationRepository.findByUserIdAndIsDeletedFalse(userId);
         notifications.forEach(notification -> {
@@ -266,15 +283,26 @@ public class NotificationService {
     }
 
     // 알림 삭제 처리
-    public void deleteNotification(HttpServletRequest request, Long notificationId) {
-        String accessToken = jwtTokenProvider.getTokenFromRequest(request);
-        Long userId = jwtTokenProvider.getUserIdFromToken(accessToken);
+    public void deleteNotification(@NonNull HttpServletRequest request, Long notificationId) {
+        Optional<Long> userIdOptional = extractUserId(request);
+        if (userIdOptional.isEmpty()) {
+            return;
+        }
+        Long userId = userIdOptional.get();
 
         notificationRepository.findByIdAndUserIdAndIsDeletedFalse(notificationId, userId).ifPresent(notification -> {
             notification.markAsRead();
             notification.markAsDeleted();
             notificationRepository.save(notification);
         });
+    }
+
+    private Optional<Long> extractUserId(@NonNull HttpServletRequest request) {
+        String accessToken = jwtTokenProvider.getTokenFromRequest(request);
+        if (accessToken == null) {
+            return Optional.empty();
+        }
+        return Optional.of(jwtTokenProvider.getUserIdFromToken(accessToken));
     }
 
 }
