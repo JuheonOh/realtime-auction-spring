@@ -1,6 +1,7 @@
 package com.inhatc.auction.global.config;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +26,6 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void configureContentNegotiation(@NonNull ContentNegotiationConfigurer configurer) {
         configurer.defaultContentType(MediaType.APPLICATION_JSON,
-                new MediaType("text", "event-stream", StandardCharsets.UTF_8));
+                new MediaType("text", "event-stream", Objects.requireNonNull(StandardCharsets.UTF_8)));
     }
 }

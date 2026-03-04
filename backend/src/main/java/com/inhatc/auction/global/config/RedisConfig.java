@@ -1,5 +1,7 @@
 package com.inhatc.auction.global.config;
 
+import java.util.Objects;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,7 +22,7 @@ public class RedisConfig {
 
     @Bean
     LettuceConnectionFactory redisConnectionFactory() {
-        return new LettuceConnectionFactory(host, port);
+        return new LettuceConnectionFactory(Objects.requireNonNull(host, "Redis host must not be null"), port);
     }
 
     @Bean

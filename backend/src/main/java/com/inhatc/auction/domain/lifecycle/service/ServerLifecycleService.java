@@ -3,6 +3,7 @@ package com.inhatc.auction.domain.lifecycle.service;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 
@@ -61,7 +62,8 @@ public class ServerLifecycleService {
 
         try {
             // 새로운 종료 기록 생성
-            serverLifecycleRepository.save(ServerLifecycle.builder().shutdownTime(shutdownTime).build());
+            serverLifecycleRepository.save(Objects.requireNonNull(
+                    ServerLifecycle.builder().shutdownTime(shutdownTime).build()));
         } catch (Exception e) {
             log.error("데이터베이스에 서버 종료 시간 기록 실패", e);
         }
@@ -94,7 +96,7 @@ public class ServerLifecycleService {
             auction.extendEndTime(downtime.plusMinutes(10));
         }
 
-        auctionRepository.saveAll(auctions);
+        auctionRepository.saveAll(Objects.requireNonNull(auctions));
         log.info("경매 종료 시간 보상 처리 완료");
     }
 }
