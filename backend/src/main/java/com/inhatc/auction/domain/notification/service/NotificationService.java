@@ -6,8 +6,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
@@ -39,11 +41,7 @@ public class NotificationService {
 
     // 사용자의 알림 목록 조회
     public List<NotificationResponseDTO> getNotifications(@NonNull HttpServletRequest request) {
-        Optional<Long> userIdOptional = extractUserId(request);
-        if (userIdOptional.isEmpty()) {
-            return List.of();
-        }
-        Long userId = userIdOptional.get();
+        Long userId = extractUserIdOrThrow(request);
 
         log.info("userId: {}", userId);
 
@@ -238,11 +236,7 @@ public class NotificationService {
 
     // 모두 읽음 처리
     public void markAsReadAll(@NonNull HttpServletRequest request) {
-        Optional<Long> userIdOptional = extractUserId(request);
-        if (userIdOptional.isEmpty()) {
-            return;
-        }
-        Long userId = userIdOptional.get();
+        Long userId = extractUserIdOrThrow(request);
 
         List<Notification> notifications = notificationRepository.findByUserIdAndIsReadFalse(userId);
         notifications.forEach(notification -> {
@@ -254,11 +248,7 @@ public class NotificationService {
 
     // 알림 읽음 처리
     public void markAsRead(@NonNull HttpServletRequest request, Long notificationId) {
-        Optional<Long> userIdOptional = extractUserId(request);
-        if (userIdOptional.isEmpty()) {
-            return;
-        }
-        Long userId = userIdOptional.get();
+        Long userId = extractUserIdOrThrow(request);
 
         notificationRepository.findByIdAndUserIdAndIsDeletedFalse(notificationId, userId).ifPresent(notification -> {
             notification.markAsRead();
@@ -268,11 +258,7 @@ public class NotificationService {
 
     // 모든 알림 삭제 처리
     public void deleteNotificationAll(@NonNull HttpServletRequest request) {
-        Optional<Long> userIdOptional = extractUserId(request);
-        if (userIdOptional.isEmpty()) {
-            return;
-        }
-        Long userId = userIdOptional.get();
+        Long userId = extractUserIdOrThrow(request);
 
         List<Notification> notifications = notificationRepository.findByUserIdAndIsDeletedFalse(userId);
         notifications.forEach(notification -> {
@@ -284,11 +270,7 @@ public class NotificationService {
 
     // 알림 삭제 처리
     public void deleteNotification(@NonNull HttpServletRequest request, Long notificationId) {
-        Optional<Long> userIdOptional = extractUserId(request);
-        if (userIdOptional.isEmpty()) {
-            return;
-        }
-        Long userId = userIdOptional.get();
+        Long userId = extractUserIdOrThrow(request);
 
         notificationRepository.findByIdAndUserIdAndIsDeletedFalse(notificationId, userId).ifPresent(notification -> {
             notification.markAsRead();
@@ -297,12 +279,22 @@ public class NotificationService {
         });
     }
 
-    private Optional<Long> extractUserId(@NonNull HttpServletRequest request) {
+    private Long extractUserIdOrThrow(@NonNull HttpServletRequest request) {
         String accessToken = jwtTokenProvider.getTokenFromRequest(request);
         if (accessToken == null) {
-            return Optional.empty();
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         }
-        return Optional.of(jwtTokenProvider.getUserIdFromToken(accessToken));
+
+        try {
+            if (!jwtTokenProvider.validateToken(accessToken)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다.");
+            }
+            return jwtTokenProvider.getUserIdFromToken(accessToken);
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다.", e);
+        }
     }
 
 }
