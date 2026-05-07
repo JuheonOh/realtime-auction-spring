@@ -10,7 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "axios": "^1.7.7",
+    "axios": "^1.13.6",
     "mariadb": "^3.4.0",
     "server-health-check": "file:"
   }
