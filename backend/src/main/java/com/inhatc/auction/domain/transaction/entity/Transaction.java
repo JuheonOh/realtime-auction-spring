@@ -16,12 +16,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "transaction")
+@Table(name = "transaction", uniqueConstraints = @UniqueConstraint(name = "uk_transaction_auction_id", columnNames = "auction_id"))
 @Getter
 @NoArgsConstructor
 public class Transaction extends BaseTimeEntity {
@@ -31,7 +32,7 @@ public class Transaction extends BaseTimeEntity {
 
     @JsonIgnore
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "auction_id")
+    @JoinColumn(name = "auction_id", unique = true)
     private Auction auction;
 
     @JsonIgnore

@@ -1,7 +1,6 @@
 import { login } from "@apis/AuthAPI";
 import InValidAlert from "@components/common/alerts/InValidAlert";
 import { RESET_USER, SET_ACCESS_TOKEN } from "@data/redux/store/User";
-import { setCookie } from "@data/storage/Cookie";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
@@ -70,17 +69,14 @@ export default function LoginPage() {
 
     try {
       const res = await login(formData);
-      setCookie("tokenType", res.data.tokenType);
-      setCookie("refreshToken", res.data.refreshToken);
-      setCookie("accessToken", res.data.accessToken);
-
       dispatch(SET_ACCESS_TOKEN(res.data.accessToken));
 
       navigate("/");
     } catch (err) {
-      console.log(err);
-
-      setInValid(err.response.data);
+      const message = err.response
+        ? "로그인에 실패했습니다. 이메일과 비밀번호를 확인해 주세요."
+        : "서버와 통신할 수 없습니다. 잠시 후 다시 시도해 주세요.";
+      setInValid({ password: message });
     }
   };
 

@@ -17,19 +17,17 @@ import com.inhatc.auction.global.constant.JwtHeader;
 import com.inhatc.auction.global.constant.JwtPayload;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.SignatureException;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.log4j.Log4j2;
 
-@Log4j2
 @Component
 public class JwtTokenProvider {
+    private static final String TOKEN_USE_CLAIM = "token_use";
+    private static final String ACCESS_TOKEN_USE = "access";
+    private static final String REFRESH_TOKEN_USE = "refresh";
+
     private SecretKey jwtSecretKey;
 
     @Value("${spring.jwt.secret}")
@@ -45,7 +43,7 @@ public class JwtTokenProvider {
     }
 
     @NonNull
-    public String generateToken(@NonNull Authentication authentication, long expirationTime) {
+    private String generateToken(@NonNull Authentication authentication, long expirationTime, @NonNull String tokenUse) {
         CustomUserDetails customUserDetails = (CustomUserDetails) authentication.getPrincipal();
         Date expiryDate = new Date(new Date().getTime() + expirationTime);
         Long userId = Objects.requireNonNull(customUserDetails.getId(), "JWT USER_ID value is missing");
@@ -63,6 +61,7 @@ public class JwtTokenProvider {
                 .claim(JwtPayload.USER_NAME.getClaims(), userName)
                 .claim(JwtPayload.USER_EMAIL.getClaims(), userEmail)
                 .claim(JwtPayload.USER_ROLE.getClaims(), userRole)
+                .claim(TOKEN_USE_CLAIM, tokenUse)
                 .issuedAt(new Date()) // 토큰 발급 시간
                 .expiration(expiryDate) // 토큰 만료 시간
                 .compact(); // 토큰 생성
@@ -71,12 +70,12 @@ public class JwtTokenProvider {
 
     @NonNull
     public String generateAccessToken(@NonNull Authentication authentication) {
-        return generateToken(authentication, jwtAccessTokenExpirationTime);
+        return generateToken(authentication, jwtAccessTokenExpirationTime, ACCESS_TOKEN_USE);
     }
 
     @NonNull
     public String generateRefreshToken(@NonNull Authentication authentication) {
-        return generateToken(authentication, jwtRefreshTokenExpirationTime);
+        return generateToken(authentication, jwtRefreshTokenExpirationTime, REFRESH_TOKEN_USE);
     }
 
     @Nullable
@@ -119,50 +118,23 @@ public class JwtTokenProvider {
 
     @NonNull
     public Claims getClaims(@NonNull String token) {
-        try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(jwtSecretKey)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-            return Objects.requireNonNull(claims, "JWT claims are missing");
-        } catch (ExpiredJwtException e) {
-            log.info("만료된 JWT 토큰: {}", e.getMessage());
-            throw e;
-        } catch (UnsupportedJwtException e) {
-            log.info("지원되지 않는 JWT 토큰: {}", e.getMessage());
-            throw e;
-        } catch (MalformedJwtException e) {
-            log.info("잘못된 형식의 JWT 토큰: {}", e.getMessage());
-            throw e;
-        } catch (SignatureException e) {
-            log.info("잘못된 JWT 서명: {}", e.getMessage());
-            throw e;
-        } catch (IllegalArgumentException e) {
-            log.info("JWT 토큰이 비어있음: {}", e.getMessage());
-            throw e;
-        }
+        Claims claims = Jwts.parser()
+                .verifyWith(Objects.requireNonNull(jwtSecretKey, "JWT secret key is not initialized"))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        return Objects.requireNonNull(claims, "JWT claims are missing");
     }
 
     public boolean validateToken(@NonNull String token) {
-        try {
-            Jwts.parser()
-                    .verifyWith(jwtSecretKey)
-                    .build()
-                    .parseSignedClaims(token);
-            return true;
-        } catch (ExpiredJwtException e) {
-            log.info("만료된 JWT 토큰: {}", e.getMessage());
-            throw e;
-        } catch (UnsupportedJwtException e) {
-            log.info("지원되지 않는 JWT 토큰: {}", e.getMessage());
-            throw e;
-        } catch (MalformedJwtException e) {
-            log.info("잘못된 형식의 JWT 토큰: {}", e.getMessage());
-            throw e;
-        } catch (IllegalArgumentException e) {
-            log.info("JWT 토큰이 비어있음: {}", e.getMessage());
-            throw e;
-        }
+        return hasTokenUse(token, ACCESS_TOKEN_USE);
+    }
+
+    public boolean validateRefreshToken(@NonNull String token) {
+        return hasTokenUse(token, REFRESH_TOKEN_USE);
+    }
+
+    private boolean hasTokenUse(@NonNull String token, @NonNull String expectedTokenUse) {
+        return expectedTokenUse.equals(getClaims(token).get(TOKEN_USE_CLAIM, String.class));
     }
 }

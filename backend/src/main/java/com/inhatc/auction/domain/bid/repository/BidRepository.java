@@ -19,6 +19,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     @Query("SELECT b FROM Bid b WHERE b.auction.id = :auctionId ORDER BY b.bidAmount DESC")
     List<Bid> findByAuctionId(@Param("auctionId") Long auctionId);
 
+
     // 이미 존재하는 입찰인지 확인
     @Query("SELECT COUNT(b) > 0 FROM Bid b WHERE b.auction.id = :auctionId AND b.user.id = :userId AND b.bidAmount = :bidAmount")
     boolean existsByAuctionIdAndUserIdAndBidAmount(

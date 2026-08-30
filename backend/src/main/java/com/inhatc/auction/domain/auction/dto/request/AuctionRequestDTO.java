@@ -9,7 +9,6 @@ import com.inhatc.auction.domain.auction.validation.annotation.BuyNowPriceValida
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Data;
@@ -17,9 +16,6 @@ import lombok.Data;
 @Data
 @BuyNowPriceValidator
 public class AuctionRequestDTO {
-    @NotNull(message = "로그인 정보가 없습니다.")
-    private Long userId;
-
     @NotBlank(message = "제목은 필수 입력 사항입니다.")
     private String title;
 

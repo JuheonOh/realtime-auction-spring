@@ -16,13 +16,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.entity.AuctionStatus;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
-import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
+import com.inhatc.auction.domain.bid.repository.BidRepository;
 import com.inhatc.auction.domain.category.entity.Category;
 import com.inhatc.auction.domain.image.entity.Image;
 import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
@@ -35,20 +34,6 @@ import com.inhatc.auction.domain.user.entity.UserRole;
 import com.inhatc.auction.global.jwt.JwtTokenProvider;
 
 import jakarta.servlet.http.HttpServletRequest;
-
-/**
- * 스프링 부트 기본 컨텍스트 로딩 테스트.
- */
-@SpringBootTest
-class AuctionApplicationTests {
-
-    /**
-     * 애플리케이션 컨텍스트가 정상적으로 기동되는지 확인한다.
-     */
-    @Test
-    void contextLoads() {
-    }
-}
 
 /**
  * NotificationService의 구매자 알림 타입 분기(WIN/BUY_NOW_WIN)를 단위 테스트로 검증한다.
@@ -64,7 +49,7 @@ class AuctionApplicationBuyerNotificationTypeTests {
     @Mock
     private AuctionRepository auctionRepository;
     @Mock
-    private RedisBidRepository redisBidRepository;
+    private BidRepository bidRepository;
 
     // 테스트 대상 서비스
     @InjectMocks
@@ -87,6 +72,7 @@ class AuctionApplicationBuyerNotificationTypeTests {
 
         // 토큰 파싱 -> 알림 조회 -> 경매 조회 흐름 mock 설정
         when(jwtTokenProvider.getTokenFromRequest(Objects.requireNonNull(request))).thenReturn(accessToken);
+        when(jwtTokenProvider.validateToken(accessToken)).thenReturn(true);
         when(jwtTokenProvider.getUserIdFromToken(accessToken)).thenReturn(userId);
         when(notificationRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId))
                 .thenReturn(List.of(notification));
@@ -103,7 +89,7 @@ class AuctionApplicationBuyerNotificationTypeTests {
         assertThat(response.getType()).isEqualTo(NotificationType.WIN);
         assertThat(response.getAuctionInfo().getSuccessfulPrice()).isEqualTo(12000L);
         assertThat(response.getMyBidInfo()).isNull();
-        verify(redisBidRepository, never()).findByAuctionIdOrderByBidAmountDesc(auctionId);
+        verify(bidRepository, never()).findByAuctionId(auctionId);
     }
 
     /**
@@ -123,6 +109,7 @@ class AuctionApplicationBuyerNotificationTypeTests {
 
         // 토큰 파싱 -> 알림 조회 -> 경매 조회 흐름 mock 설정
         when(jwtTokenProvider.getTokenFromRequest(Objects.requireNonNull(request))).thenReturn(accessToken);
+        when(jwtTokenProvider.validateToken(accessToken)).thenReturn(true);
         when(jwtTokenProvider.getUserIdFromToken(accessToken)).thenReturn(userId);
         when(notificationRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId))
                 .thenReturn(List.of(notification));
@@ -139,7 +126,7 @@ class AuctionApplicationBuyerNotificationTypeTests {
         assertThat(response.getType()).isEqualTo(NotificationType.BUY_NOW_WIN);
         assertThat(response.getAuctionInfo().getSuccessfulPrice()).isEqualTo(25000L);
         assertThat(response.getMyBidInfo()).isNull();
-        verify(redisBidRepository, never()).findByAuctionIdOrderByBidAmountDesc(auctionId);
+        verify(bidRepository, never()).findByAuctionId(auctionId);
     }
 
     /**

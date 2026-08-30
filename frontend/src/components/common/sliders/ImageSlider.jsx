@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export default function ImageSlider({ images, selectedImage, onSelectImage }) {
   const imageContainerRef = useRef(null);

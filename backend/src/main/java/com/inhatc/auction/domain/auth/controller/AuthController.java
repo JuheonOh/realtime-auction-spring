@@ -1,15 +1,18 @@
 package com.inhatc.auction.domain.auth.controller;
 
-import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,19 +23,31 @@ import com.inhatc.auction.domain.user.dto.request.UserRequestDTO;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
 
-@Log4j2
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
 public class AuthController {
+    private static final String REFRESH_TOKEN_COOKIE = "refreshToken";
+
     private final AuthService authService;
+
+    @Value("${app.security.refresh-cookie-secure:${REFRESH_COOKIE_SECURE:false}}")
+    private boolean refreshCookieSecure;
+
+    @GetMapping("/csrf")
+    public ResponseEntity<Void> csrf(CsrfToken csrfToken) {
+        return ResponseEntity.noContent().build();
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody @NonNull AuthRequestDTO requestDTO) {
         AuthResponseDTO responseDTO = this.authService.login(requestDTO);
-        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie(responseDTO.getRefreshToken()).toString())
+                .body(Map.of(
+                        "tokenType", responseDTO.getTokenType(),
+                        "accessToken", responseDTO.getAccessToken()));
     }
 
     @PostMapping("/signup")
@@ -41,19 +56,47 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED).body(null);
     }
 
-    @GetMapping("/logout")
-    public ResponseEntity<?> logout(@RequestHeader("REFRESH_TOKEN") @NonNull String refreshToken) {
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@CookieValue(value = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .header(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString())
+                    .build();
+        }
         this.authService.logout(refreshToken);
-        return ResponseEntity.status(HttpStatus.OK).body(null);
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, clearRefreshTokenCookie().toString())
+                .build();
     }
 
-    @GetMapping("/refresh")
-    public ResponseEntity<?> refreshToken(@RequestHeader("REFRESH_TOKEN") @NonNull String refreshToken) {
-        String newAccessToken = this.authService.refreshToken(refreshToken);
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refreshToken(@CookieValue(value = REFRESH_TOKEN_COOKIE, required = false) String refreshToken) {
+        if (refreshToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        AuthResponseDTO responseDTO = this.authService.refreshToken(refreshToken);
+        return ResponseEntity.status(HttpStatus.OK)
+                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie(responseDTO.getRefreshToken()).toString())
+                .body(Map.of("accessToken", responseDTO.getAccessToken()));
+    }
 
-        Map<String, String> response = new HashMap<>();
-        response.put("accessToken", newAccessToken);
+    private ResponseCookie refreshTokenCookie(String refreshToken) {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(authService.getRefreshTokenCookieMaxAge())
+                .build();
+    }
 
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+    private ResponseCookie clearRefreshTokenCookie() {
+        return ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite("Lax")
+                .path("/api/auth")
+                .maxAge(0)
+                .build();
     }
 }

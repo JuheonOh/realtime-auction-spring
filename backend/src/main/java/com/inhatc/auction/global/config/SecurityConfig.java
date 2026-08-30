@@ -3,8 +3,10 @@ package com.inhatc.auction.global.config;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -13,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -29,10 +32,13 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
     private final JwtTokenFilter jwtTokenFilter;
 
+    @Value("${app.security.frontend-origin:${FRONTEND_ORIGIN:http://localhost:3000}}")
+    private String frontendOrigin;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // csrf disable
+                .csrf(csrf -> csrf.csrfTokenRepository(csrfTokenRepository()))
                 .formLogin(AbstractHttpConfigurer::disable) // Form 로그인 방식 disable
                 .httpBasic(AbstractHttpConfigurer::disable) // HTTP Basic 인증 방식 disable
 
@@ -44,7 +50,15 @@ public class SecurityConfig {
                 // 인증이 필요 없는 url 설정
                 // 그 외 모든 요청은 인증이 필요함
                 .authorizeHttpRequests(
-                        requests -> requests.requestMatchers("/**").permitAll().anyRequest().authenticated())
+                        requests -> requests
+                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                                .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup",
+                                        "/api/auth/refresh", "/api/auth/logout").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/api/auctions", "/api/auctions/**", "/api/categories",
+                                        "/api/categories/**").permitAll()
+                                .requestMatchers("/actuator/**").hasAuthority("ADMIN")
+                                .anyRequest().authenticated())
 
                 // 예외 처리 설정
                 .exceptionHandling(exception -> exception
@@ -60,13 +74,21 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieName("XSRF-TOKEN");
+        repository.setHeaderName("X-XSRF-TOKEN");
+        repository.setCookiePath("/");
+        return repository;
+    }
+
+    @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("*")); // 모든 출처 패턴 허용
+        configuration.setAllowedOrigins(List.of(frontendOrigin));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")); // 모든 메소드 허용
         configuration
-                .setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "REFRESH_TOKEN"));
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "REFRESH_TOKEN", "Set-Cookie")); // 노출 헤더
+                .setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "X-XSRF-TOKEN"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 

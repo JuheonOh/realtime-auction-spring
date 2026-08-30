@@ -15,7 +15,7 @@ WebSocket 기반 실시간 입찰과 SSE 기반 사용자 알림을 결합한 �
 - 실시간 입찰: `ws://localhost:8080/ws/auctions/{auctionId}`
 - 즉시구매 처리 분리: 요청은 HTTP(`POST /api/auctions/{id}/buy-now`), 결과 전파는 WebSocket(`buy-now`)
 - 사용자 알림: SSE 스트림 `GET /api/users/{userId}/notifications/stream`
-- 하이브리드 저장: MariaDB(정합성), Redis(실시간 입찰 로그/토큰)
+- 하이브리드 저장: MariaDB(경매·입찰·거래 원본), Redis(Refresh 세션·캐시)
 - 종료 자동화: 스케줄러 기반 종료 정산 + 알림 전송
 
 ## 🏗 아키텍처 요약
@@ -33,9 +33,9 @@ graph TD;
     FE -->|WebSocket /ws/auctions/:auctionId| WS;
     SSE -->|SSE /api/users/:userId/notifications/stream| FE;
 
-    WS -->|입찰 로그 저장| REDIS;
+    WS -->|잠금 기반 입찰 저장| DB;
     BE -->|도메인 데이터 저장| DB;
-    BE -->|토큰/입찰 데이터 접근| REDIS;
+    BE -->|Refresh 세션 해시/캐시| REDIS;
     BE -->|알림 이벤트 생성| SSE;
 ```
 
@@ -45,7 +45,7 @@ graph TD;
 
 - WebSocket 엔드포인트: `ws://localhost:8080/ws/auctions/{auctionId}`
 - 메시지 타입:
-  - 수신: `bid` (`buy-now` 요청은 HTTP API로 처리)
+  - 수신: `auth`, `bid` (`buy-now` 요청은 HTTP API로 처리)
   - 송신: `bid`, `buy-now`, `ended`, `time`, `error`, `token_expired`
 - 입찰 검증:
   - 판매자 본인 입찰 금지
@@ -76,7 +76,9 @@ graph TD;
 ### 4. 인증/인가
 
 - 로그인 시 Access/Refresh JWT 발급
-- Refresh Token은 Redis(`Auth`)에 TTL과 함께 저장
+- Refresh Token은 `HttpOnly`, `SameSite=Lax` 쿠키로 발급하고 Redis에는 SHA-256 해시와 TTL만 저장
+- Access Token과 Refresh Token의 용도를 서명된 `token_use` claim으로 구분
+- 상태 변경 요청은 `XSRF-TOKEN`/`X-XSRF-TOKEN` CSRF 검증 적용
 - 프론트 Axios interceptor로 `401 -> /api/auth/refresh` 재시도
 
 ## ⏱ 스케줄러/백그라운드 작업 요약
@@ -96,7 +98,7 @@ graph TD;
 | 실시간 입찰   | WebSocket       | 저지연 양방향 통신                 |
 | 즉시구매 명령 | HTTP            | 트랜잭션/검증/오류코드 명확성      |
 | 사용자 알림   | SSE             | 단방향 푸시 단순성                 |
-| 저장 전략     | MariaDB + Redis | 정합성 데이터와 실시간 데이터 분리 |
+| 저장 전략     | MariaDB + Redis | 금전 데이터 원본과 세션/캐시 분리  |
 
 ## 📡 핵심 API 계약 요약
 
@@ -104,6 +106,9 @@ graph TD;
 | ---------------- | ------ | ------------------------------------------ | ------ |
 | 로그인           | `POST` | `/api/auth/login`                          | 불필요 |
 | 회원가입         | `POST` | `/api/auth/signup`                         | 불필요 |
+| CSRF 초기화      | `GET`  | `/api/auth/csrf`                           | 불필요 |
+| 토큰 갱신        | `POST` | `/api/auth/refresh`                        | 쿠키   |
+| 로그아웃         | `POST` | `/api/auth/logout`                         | 쿠키   |
 | 내 정보 조회     | `GET`  | `/api/users`                               | 필요   |
 | 경매 목록        | `GET`  | `/api/auctions`                            | 불필요 |
 | 경매 상세        | `GET`  | `/api/auctions/{auctionId}`                | 선택   |
@@ -113,22 +118,11 @@ graph TD;
 | 알림 목록        | `GET`  | `/api/users/notifications`                 | 필요   |
 | 알림 스트림(SSE) | `GET`  | `/api/users/{userId}/notifications/stream` | 필요   |
 
-## ⚠ As-Is 한계와 개선 계획
+## ⚠ 남은 운영 과제
 
-1. 보안 정책
-
-- `requestMatchers("/**").permitAll()`로 HTTP 인증 강제가 약함
-- 개선: 공개/보호 API 분리 + 기본 `authenticated()` 적용
-
-2. 동시성 제어
-
-- 입찰 경로가 원자적 경쟁 제어(분산락/CAS/@Version)까지는 미적용
-- 개선: 원자 업데이트 전략 도입 + 회귀 부하 테스트 추가
-
-3. 운영 스크립트 불일치
-
-- `k6-test`의 WebSocket/SSE 경로 일부가 실제 엔드포인트와 불일치
-- 개선: 스크립트 경로 정합화
+- SSE/WebSocket 도메인 이벤트는 JPA Outbox에 함께 커밋하고 지수 백오프로 재전송
+- 운영 환경에서는 `REFRESH_COOKIE_SECURE=true`와 HTTPS/WSS를 필수로 설정
+- Actuator는 ADMIN 인증 외에도 내부 관리 네트워크로 제한 권장
 
 ## 🚀 빠른 시작
 
@@ -154,6 +148,9 @@ graph TD;
 
 ```bash
 cd backend
+export DB_USERNAME=auction
+export DB_PASSWORD='replace-with-a-strong-password'
+export JWT_SECRET='replace-with-at-least-32-random-bytes'
 ./gradlew bootRun      # macOS/Linux
 .\gradlew.bat bootRun  # Windows
 ```
@@ -164,7 +161,7 @@ cd backend
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm start
 ```
 
@@ -184,7 +181,10 @@ docker compose -f monitoring-docker-compose.yml up -d
 
 ```bash
 cd server-health-check
-npm install
+export DB_USER=auction_health
+export DB_PASSWORD='replace-with-a-strong-password'
+export DB_NAME=auction_db
+npm ci
 npm start
 ```
 
@@ -193,7 +193,7 @@ npm start
 | 경로                  | 설명                                                 |
 | --------------------- | ---------------------------------------------------- |
 | `backend`             | Spring Boot API, WebSocket, SSE, JPA/Redis, 스케줄러 |
-| `frontend`            | React SPA, Redux, Axios                              |
+| `frontend`            | React SPA, Vite, Redux, Axios                        |
 | `monitoring`          | Prometheus / Grafana 로컬 모니터링                   |
 | `k6-test`             | 부하 테스트 스크립트                                 |
 | `server-health-check` | 서버 상태 체크 및 보조 기록 유틸                     |

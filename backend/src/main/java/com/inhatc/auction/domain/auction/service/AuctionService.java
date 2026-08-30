@@ -1,5 +1,6 @@
 package com.inhatc.auction.domain.auction.service;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -7,13 +8,22 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -21,9 +31,12 @@ import org.springframework.lang.NonNull;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.inhatc.auction.domain.auction.dto.request.AuctionRequestDTO;
 import com.inhatc.auction.domain.auction.dto.response.AuctionDetailResponseDTO;
 import com.inhatc.auction.domain.auction.dto.response.AuctionResponseDTO;
@@ -31,9 +44,8 @@ import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.entity.AuctionStatus;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
 import com.inhatc.auction.domain.bid.dto.response.BidResponseDTO;
-import com.inhatc.auction.domain.bid.entity.RedisBid;
-import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
-import com.inhatc.auction.domain.bid.websocket.WebSocketHandler;
+import com.inhatc.auction.domain.bid.entity.Bid;
+import com.inhatc.auction.domain.bid.repository.BidRepository;
 import com.inhatc.auction.domain.category.entity.Category;
 import com.inhatc.auction.domain.category.repository.CategoryRepository;
 import com.inhatc.auction.domain.favorite.entity.Favorite;
@@ -46,7 +58,6 @@ import com.inhatc.auction.domain.notification.dto.response.NotificationResponseD
 import com.inhatc.auction.domain.notification.entity.Notification;
 import com.inhatc.auction.domain.notification.entity.NotificationType;
 import com.inhatc.auction.domain.notification.repository.NotificationRepository;
-import com.inhatc.auction.domain.notification.service.SseNotificationService;
 import com.inhatc.auction.domain.transaction.dto.response.TransactionResponseDTO;
 import com.inhatc.auction.domain.transaction.entity.Transaction;
 import com.inhatc.auction.domain.transaction.entity.TransactionStatus;
@@ -54,6 +65,7 @@ import com.inhatc.auction.domain.transaction.repository.TransactionRepository;
 import com.inhatc.auction.domain.user.entity.User;
 import com.inhatc.auction.domain.user.repository.UserRepository;
 import com.inhatc.auction.global.jwt.JwtTokenProvider;
+import com.inhatc.auction.global.outbox.service.OutboxPublisher;
 import com.inhatc.auction.global.utils.TimeUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -65,6 +77,11 @@ import lombok.extern.log4j.Log4j2;
 @RequiredArgsConstructor
 public class AuctionService {
 
+  private static final int MAX_IMAGE_COUNT = 5;
+  private static final long MAX_IMAGE_SIZE_BYTES = 10L * 1024 * 1024;
+  private static final long MAX_IMAGE_PIXELS = 25_000_000L;
+  private static final Map<String, ImageFormat> IMAGE_FORMATS = createImageFormats();
+
   @Value("${upload.path}")
   private String uploadPath;
 
@@ -74,10 +91,9 @@ public class AuctionService {
   private final FavoriteRepository favoriteRepository;
   private final TransactionRepository transactionRepository;
   private final JwtTokenProvider jwtTokenProvider;
-  private final RedisBidRepository redisBidRepository;
+  private final BidRepository bidRepository;
   private final NotificationRepository notificationRepository;
-  private final SseNotificationService sseNotificationService;
-  private final WebSocketHandler webSocketHandler;
+  private final OutboxPublisher outboxPublisher;
 
   @Transactional(readOnly = true)
   public AuctionDetailResponseDTO getAuctionDetail(@NonNull HttpServletRequest request, @NonNull Long auctionId) {
@@ -85,10 +101,9 @@ public class AuctionService {
     Auction auction = this.auctionRepository.findById(auctionId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다."));
 
-    // Redis 입찰 내역 조회
-    List<RedisBid> redisBids = redisBidRepository.findByAuctionIdOrderByBidTimeAsc(auctionId);
+    List<Bid> bids = bidRepository.findByAuctionId(auctionId);
     // 입찰 개수
-    Long bidCount = (long) redisBids.size();
+    Long bidCount = (long) bids.size();
 
     // 기본 관심 상태는 false
     boolean isFavorite = false;
@@ -130,21 +145,12 @@ public class AuctionService {
             .build())
         .collect(Collectors.toList());
 
-    // Redis 입찰 내역을 DTO로 변환
-    List<BidResponseDTO> bidList = redisBids.stream()
-        .map((RedisBid bid) -> {
-          Long bidderId = bid.getUserId();
-          if (bidderId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "입찰자 ID가 누락되었습니다.");
-          }
-          User bidder = userRepository.findById(bidderId)
-              .orElseThrow(() -> new ResponseStatusException(
-                  HttpStatus.NOT_FOUND,
-                  "입찰자 정보를 찾을 수 없습니다."));
-
+    List<BidResponseDTO> bidList = bids.stream()
+        .sorted(Comparator.comparing(Bid::getBidTime))
+        .map(bid -> {
           return BidResponseDTO.builder()
-              .userId(bidderId)
-              .nickname(bidder.getNickname())
+              .userId(bid.getUser().getId())
+              .nickname(bid.getUser().getNickname())
               .bidAmount(bid.getBidAmount())
               .bidTime(bid.getBidTime())
               .build();
@@ -242,14 +248,10 @@ public class AuctionService {
   }
 
   @Transactional
-  public Long createAuction(AuctionRequestDTO requestDTO) {
-    Long userId = requestDTO.getUserId();
+  public Long createAuction(@NonNull Long userId, AuctionRequestDTO requestDTO) {
     Long categoryId = requestDTO.getCategoryId();
     List<MultipartFile> multipartFiles = requestDTO.getImages();
 
-    if (userId == null) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId는 필수값입니다");
-    }
     if (categoryId == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "categoryId는 필수값입니다");
     }
@@ -273,66 +275,157 @@ public class AuctionService {
         .status(AuctionStatus.ACTIVE)
         .build();
 
+    validateImages(multipartFiles);
+    Path uploadRoot = getUploadRoot();
+    List<Path> savedFiles = new ArrayList<>();
     try {
-      List<Image> imageList = multipartFiles.stream()
-          .map(image -> {
-            try {
-              if (image.getOriginalFilename() == null) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "이미지 파일 이름이 올바르지 않습니다");
-              }
+      List<Image> imageList = new ArrayList<>();
+      for (MultipartFile multipartFile : multipartFiles) {
+        ImageFormat format = detectImageFormat(multipartFile);
+        String fileSaveName = UUID.randomUUID() + "." + format.extension();
+        Path target = uploadRoot.resolve(fileSaveName).normalize();
+        if (!target.startsWith(uploadRoot)) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 저장 경로가 올바르지 않습니다.");
+        }
 
-              String fileSaveName = UUID.randomUUID().toString() + "_"
-                  + image.getOriginalFilename();
-              String fileRealName = image.getOriginalFilename();
-              String fileType = image.getContentType();
-              long fileSize = image.getSize();
-              Path uploadDir = Paths.get(uploadPath);
-
-              if (!Files.exists(uploadDir)) {
-                Files.createDirectories(uploadDir);
-              }
-
-              if (fileType != null && !fileType.equals("image/jpeg")
-                  && !fileType.equals("image/png")
-                  && !fileType.equals("image/jpg")
-                  && !fileType.equals("image/gif")
-                  && !fileType.equals("image/bmp")
-                  && !fileType.equals("image/webp")) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "이미지 파일 타입이 올바르지 않습니다. 허용 타입: jpeg, png, jpg, gif, bmp, webp");
-              }
-
-              Path filePath = uploadDir.resolve(fileSaveName);
-              Files.copy(image.getInputStream(), filePath);
-
-              return Image.builder()
-                  .filePath(fileSaveName)
-                  .fileName(fileRealName)
-                  .fileType(fileType)
-                  .fileSize(fileSize)
-                  .auction(auction)
-                  .build();
-            } catch (IllegalStateException | IOException e) {
-              log.error("이미지 업로드 중 오류 발생", e);
-              throw new ResponseStatusException(
-                  HttpStatus.INTERNAL_SERVER_ERROR,
-                  "이미지 업로드 중 오류 발생", e);
-            }
-          })
-          .collect(Collectors.toList());
+        copyImageToTarget(multipartFile, uploadRoot, target);
+        savedFiles.add(target);
+        imageList.add(Image.builder()
+            .filePath(fileSaveName)
+            .fileName(multipartFile.getOriginalFilename())
+            .fileType(format.contentType())
+            .fileSize(multipartFile.getSize())
+            .auction(auction)
+            .build());
+      }
 
       auction.setImages(imageList);
-    } catch (Exception e) {
+      this.auctionRepository.save(auction);
+      if (TransactionSynchronizationManager.isSynchronizationActive()) {
+        List<Path> filesToKeepOnCommit = List.copyOf(savedFiles);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+          @Override
+          public void afterCompletion(int status) {
+            if (status != TransactionSynchronization.STATUS_COMMITTED) {
+              deleteFiles(filesToKeepOnCommit);
+            }
+          }
+        });
+      }
+      return auction.getId();
+    } catch (ResponseStatusException e) {
+      deleteFiles(savedFiles);
+      throw e;
+    } catch (IOException | IllegalStateException e) {
+      deleteFiles(savedFiles);
       log.error("이미지 업로드 중 오류 발생", e);
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 업로드 중 오류 발생", e);
+    } catch (RuntimeException e) {
+      deleteFiles(savedFiles);
+      throw e;
     }
+  }
 
-    this.auctionRepository.save(auction);
+  private Path getUploadRoot() {
+    try {
+      Path configuredRoot = Paths.get(uploadPath).toAbsolutePath().normalize();
+      Files.createDirectories(configuredRoot);
+      return configuredRoot.toRealPath();
+    } catch (IOException | IllegalArgumentException e) {
+      log.error("이미지 업로드 경로를 준비하지 못했습니다", e);
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 업로드 경로를 준비하지 못했습니다.", e);
+    }
+  }
 
-    return auction.getId();
+  private void validateImages(List<MultipartFile> images) {
+    if (images == null || images.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지를 최소 1개 이상 업로드해야 합니다.");
+    }
+    if (images.size() > MAX_IMAGE_COUNT) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지는 최대 " + MAX_IMAGE_COUNT + "개까지 업로드할 수 있습니다.");
+    }
+    for (MultipartFile image : images) {
+      if (image == null || image.isEmpty() || image.getSize() <= 0
+          || image.getOriginalFilename() == null || image.getOriginalFilename().isBlank()) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일이 올바르지 않습니다.");
+      }
+      if (image.getSize() > MAX_IMAGE_SIZE_BYTES) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일은 10MB 이하여야 합니다.");
+      }
+    }
+  }
+
+  private ImageFormat detectImageFormat(MultipartFile image) throws IOException {
+    try (ImageInputStream input = ImageIO.createImageInputStream(image.getInputStream())) {
+      if (input == null) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일이 올바르지 않습니다.");
+      }
+      java.util.Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+      if (!readers.hasNext()) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일 타입이 올바르지 않습니다. 허용 타입: jpeg, png, gif, bmp, webp");
+      }
+
+      ImageReader reader = readers.next();
+      try {
+        reader.setInput(input, true, true);
+        ImageFormat format = IMAGE_FORMATS.get(reader.getFormatName().toLowerCase(Locale.ROOT));
+        if (format == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일 타입이 올바르지 않습니다. 허용 타입: jpeg, png, gif, bmp, webp");
+        }
+        int width = reader.getWidth(0);
+        int height = reader.getHeight(0);
+        if (width <= 0 || height <= 0 || (long) width * height > MAX_IMAGE_PIXELS) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 해상도가 허용 범위를 초과했습니다.");
+        }
+        BufferedImage decodedImage = reader.read(0);
+        if (decodedImage == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미지 파일이 올바르지 않습니다.");
+        }
+        return format;
+      } finally {
+        reader.dispose();
+      }
+    }
+  }
+
+  private void copyImageToTarget(MultipartFile image, Path uploadRoot, Path target) throws IOException {
+    Path temporaryFile = Files.createTempFile(uploadRoot, ".upload-", ".tmp");
+    try {
+      try (java.io.InputStream input = image.getInputStream()) {
+        Files.copy(input, temporaryFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+      }
+      try {
+        Files.move(temporaryFile, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+      } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+        Files.move(temporaryFile, target);
+      }
+    } finally {
+      Files.deleteIfExists(temporaryFile);
+    }
+  }
+
+  private void deleteFiles(List<Path> files) {
+    for (Path file : files) {
+      try {
+        Files.deleteIfExists(file);
+      } catch (IOException e) {
+        log.warn("실패한 이미지 업로드 파일을 삭제하지 못했습니다: {}", file, e);
+      }
+    }
+  }
+
+  private static Map<String, ImageFormat> createImageFormats() {
+    Map<String, ImageFormat> formats = new HashMap<>();
+    formats.put("jpeg", new ImageFormat("jpg", "image/jpeg"));
+    formats.put("jpg", new ImageFormat("jpg", "image/jpeg"));
+    formats.put("png", new ImageFormat("png", "image/png"));
+    formats.put("gif", new ImageFormat("gif", "image/gif"));
+    formats.put("bmp", new ImageFormat("bmp", "image/bmp"));
+    formats.put("webp", new ImageFormat("webp", "image/webp"));
+    return Map.copyOf(formats);
+  }
+
+  private record ImageFormat(String extension, String contentType) {
   }
 
   @Transactional
@@ -355,18 +448,26 @@ public class AuctionService {
     User user = this.userRepository.findById(userId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
-    Auction auction = this.auctionRepository.findById(auctionId)
+    Auction auction = this.auctionRepository.findByIdForUpdate(auctionId)
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "경매를 찾을 수 없습니다"));
+
+    Transaction existingTransaction = transactionRepository.findByAuctionId(auctionId).orElse(null);
+    if (existingTransaction != null) {
+      auction.setSuccessfulPrice(existingTransaction.getFinalPrice());
+      auction.updateStatus(AuctionStatus.ENDED);
+      auctionRepository.save(auction);
+      return;
+    }
 
     if (auction.getBuyNowPrice() == 0) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "즉시 구매가 가능한 경매가 아닙니다.");
     }
 
-    if (auction.getStatus() == AuctionStatus.ENDED) {
+    if (auction.getStatus() != AuctionStatus.ACTIVE) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 종료된 경매입니다.");
     }
 
-    if (auction.getAuctionEndTime().isBefore(LocalDateTime.now())) {
+    if (!auction.getAuctionEndTime().isAfter(LocalDateTime.now())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료된 경매는 즉시 구매할 수 없습니다.");
     }
 
@@ -393,17 +494,16 @@ public class AuctionService {
 
     // 구매자는 BUY_NOW_WIN, 기존 입찰자는 ENDED 알림 전송
     notifyAuctionEndedToBidders(auction, user);
-    // 경매방 참여자에게 즉시구매 결과 브로드캐스트
-    this.webSocketHandler.broadcastBuyNow(auction, user);
+    outboxPublisher.publishWebSocket(auction.getId(), "buy-now", HttpStatus.CREATED.value(),
+        JsonNodeFactory.instance.objectNode().put("buyerId", user.getId()));
   }
 
   // 즉시구매 종료 시: 구매자는 BUY_NOW_WIN, 기존 입찰자는 ENDED 알림 전송
   private void notifyAuctionEndedToBidders(Auction auction, User buyer) {
-    // 경매의 입찰 참여자 목록 조회
-    List<RedisBid> auctionBidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
+    List<Bid> auctionBidList = bidRepository.findByAuctionId(auction.getId());
     List<Long> bidderIds = auctionBidList
         .stream()
-        .map(RedisBid::getUserId)
+        .map(bid -> bid.getUser().getId())
         .distinct()
         .collect(Collectors.toList());
 
@@ -466,15 +566,14 @@ public class AuctionService {
               : null)
           .build();
 
-      // SSE 푸시 전송
-      sendNotificationSafely(recipientId, notificationResponseDTO);
+      outboxPublisher.publishSse(recipientId, notificationResponseDTO);
     }
   }
 
   // 마감 시간 도달 시 패찰자(비낙찰자) 알림 전송
-  private void notifyAuctionEndedByTimeToLosers(Auction auction, Long winnerId, List<RedisBid> bidList) {
+  private void notifyAuctionEndedByTimeToLosers(Auction auction, Long winnerId, List<Bid> bidList) {
     List<Long> loserIds = bidList.stream()
-        .map(RedisBid::getUserId)
+        .map(bid -> bid.getUser().getId())
         .distinct()
         .filter(userId -> !userId.equals(winnerId))
         .collect(Collectors.toList());
@@ -530,18 +629,18 @@ public class AuctionService {
           .myBidInfo(getHighestMyBidInfo(bidList, loserId))
           .build();
 
-      sendNotificationSafely(loserId, notificationResponseDTO);
+      outboxPublisher.publishSse(loserId, notificationResponseDTO);
     }
   }
 
   // 특정 사용자의 최고 입찰가 정보 반환
-  private MyBidInfoDTO getHighestMyBidInfo(List<RedisBid> bidList, Long userId) {
+  private MyBidInfoDTO getHighestMyBidInfo(List<Bid> bidList, Long userId) {
     if (bidList == null || userId == null) {
       return null;
     }
 
     return bidList.stream()
-        .filter(bid -> userId.equals(bid.getUserId()))
+        .filter(bid -> userId.equals(bid.getUser().getId()))
         .findFirst()
         .map(bid -> MyBidInfoDTO.builder()
             .bidAmount(bid.getBidAmount())
@@ -556,24 +655,34 @@ public class AuctionService {
     LocalDateTime now = LocalDateTime.now();
     List<Auction> endedAuctions = auctionRepository.findByAuctionEndTimeBeforeAndStatus(now, AuctionStatus.ACTIVE);
 
-    for (Auction auction : endedAuctions) {
-      // Redis에서 금액순으로 정렬된 입찰 내역 조회
-      List<RedisBid> bidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auction.getId());
+    for (Auction endedAuction : endedAuctions) {
+      Auction auction = auctionRepository.findByIdForUpdate(endedAuction.getId()).orElse(null);
+      if (auction == null || auction.getStatus() != AuctionStatus.ACTIVE
+          || auction.getAuctionEndTime().isAfter(LocalDateTime.now())) {
+        continue;
+      }
+      Transaction existingTransaction = transactionRepository.findByAuctionId(auction.getId()).orElse(null);
+      if (existingTransaction != null) {
+        auction.setSuccessfulPrice(existingTransaction.getFinalPrice());
+        auction.updateStatus(AuctionStatus.ENDED);
+        auctionRepository.save(auction);
+        continue;
+      }
+
+      List<Bid> bidList = bidRepository.findByAuctionId(auction.getId());
       // 최고 입찰자
-      RedisBid highestBid = bidList.isEmpty() ? null : bidList.get(0);
+      Bid highestBid = bidList.isEmpty() ? null : bidList.get(0);
 
       // 입찰 내역이 없는 경우
       if (highestBid == null) {
         auction.updateStatus(AuctionStatus.ENDED);
         auction.setSuccessfulPrice(0L);
         this.auctionRepository.save(auction);
+        outboxPublisher.publishWebSocket(auction.getId(), "ended", HttpStatus.OK.value(),
+            JsonNodeFactory.instance.objectNode());
       } else {
         // 입찰자가 있는 경우
-        Long highestBidUserId = highestBid.getUserId();
-        if (highestBidUserId == null) {
-          log.warn("Auction ID: {} has highest bid without userId", auction.getId());
-          continue;
-        }
+        Long highestBidUserId = highestBid.getUser().getId();
         Optional<User> winner = userRepository.findById(highestBidUserId);
 
         if (winner.isPresent()) {
@@ -616,17 +725,16 @@ public class AuctionService {
                   .build())
               .build();
 
-          // 낙찰자에게 SSE 알림 전송
           Long winnerId = winner.get().getId();
           if (winnerId == null) {
             log.warn("Auction ID: {} has winner without userId", auction.getId());
             continue;
           }
-          sendNotificationSafely(winnerId, notificationResponseDTO);
+          outboxPublisher.publishSse(winnerId, notificationResponseDTO);
 
-          // 비낙찰자 ENDED_TIME 알림 및 WebSocket 종료 브로드캐스트
           notifyAuctionEndedByTimeToLosers(auction, winnerId, bidList);
-          this.webSocketHandler.broadcastEnded(auction);
+          outboxPublisher.publishWebSocket(auction.getId(), "ended", HttpStatus.OK.value(),
+              JsonNodeFactory.instance.objectNode());
         }
       }
     }
@@ -657,9 +765,4 @@ public class AuctionService {
     }
   }
 
-  private void sendNotificationSafely(Long userId, NotificationResponseDTO dto) {
-    sseNotificationService.sendNotification(
-        Objects.requireNonNull(userId),
-        Objects.requireNonNull(dto));
-  }
 }

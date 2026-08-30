@@ -1,10 +1,10 @@
-import { getCookie } from "@data/storage/Cookie";
 import HttpClientManager from "./HttpClientManager";
 
 export const AuthApi = HttpClientManager.createApiInstance();
 
 export const login = async ({ email, password }) => {
   try {
+    await HttpClientManager.bootstrapCsrf();
     const response = await AuthApi.post("/api/auth/login", { email, password });
     return response;
   } catch (error) {
@@ -14,6 +14,7 @@ export const login = async ({ email, password }) => {
 
 export const signUp = async (formData) => {
   try {
+    await HttpClientManager.bootstrapCsrf();
     const response = await AuthApi.post("/api/auth/signup", formData);
     return response.data;
   } catch (error) {
@@ -24,12 +25,8 @@ export const signUp = async (formData) => {
 
 export const logout = async () => {
   try {
-    const response = await AuthApi.get("/api/auth/logout", {
-      headers: {
-        REFRESH_TOKEN: getCookie("refreshToken"),
-      },
-    });
-    
+    await HttpClientManager.bootstrapCsrf();
+    const response = await AuthApi.post("/api/auth/logout");
     return response;
   } catch (error) {
     throw error;

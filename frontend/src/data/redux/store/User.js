@@ -1,9 +1,8 @@
-import { getCookie } from "@data/storage/Cookie";
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  authenticated: getCookie("accessToken") ? true : false,
-  accessToken: getCookie("accessToken") ? getCookie("accessToken") : null,
+  authenticated: false,
+  accessToken: null,
   info: {},
 };
 

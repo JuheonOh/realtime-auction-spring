@@ -13,8 +13,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.repository.AuctionRepository;
-import com.inhatc.auction.domain.bid.entity.RedisBid;
-import com.inhatc.auction.domain.bid.repository.RedisBidRepository;
+import com.inhatc.auction.domain.bid.entity.Bid;
+import com.inhatc.auction.domain.bid.repository.BidRepository;
 import com.inhatc.auction.domain.notification.dto.response.AuctionInfoDTO;
 import com.inhatc.auction.domain.notification.dto.response.MyBidInfoDTO;
 import com.inhatc.auction.domain.notification.dto.response.NotificationResponseDTO;
@@ -37,7 +37,7 @@ public class NotificationService {
     private final JwtTokenProvider jwtTokenProvider;
     private final NotificationRepository notificationRepository;
     private final AuctionRepository auctionRepository;
-    private final RedisBidRepository redisBidRepository;
+    private final BidRepository bidRepository;
 
     // 사용자의 알림 목록 조회
     public List<NotificationResponseDTO> getNotifications(@NonNull HttpServletRequest request) {
@@ -66,17 +66,17 @@ public class NotificationService {
             NotificationType type = notification.getType();
             if (type == NotificationType.BID) {
                 // 이전 최고 입찰 정보와 현재 최고 입찰 정보 조회 (이전 최고 입찰자, 현재 입찰자)
-                List<RedisBid> redisBidList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auctionId);
-                Boolean isPreviousBidPresent = redisBidList.size() >= 2; // 이전 최고 입찰 정보가 있는 경우
+                List<Bid> bidList = bidRepository.findByAuctionId(auctionId);
+                Boolean isPreviousBidPresent = bidList.size() >= 2; // 이전 최고 입찰 정보가 있는 경우
 
                 // 경매 정보가 있고 입찰 정보가 있는 경우
-                if (auctionOptional.isPresent() && !redisBidList.isEmpty()) {
+                if (auctionOptional.isPresent() && !bidList.isEmpty()) {
                     Auction auction = auctionOptional.get();
 
                     // 이전 최고 입찰 정보가 있는 경우
                     if (isPreviousBidPresent) {
-                        RedisBid currentBid = redisBidList.get(0);
-                        RedisBid previousBid = redisBidList.get(1);
+                        Bid currentBid = bidList.get(0);
+                        Bid previousBid = bidList.get(1);
 
                         NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
                                 .id(notification.getId())
@@ -102,7 +102,7 @@ public class NotificationService {
                         return notificationResponseDTO;
                     } else {
                         // 이전 최고 입찰 정보가 없는 경우
-                        RedisBid currentBid = redisBidList.get(0);
+                        Bid currentBid = bidList.get(0);
 
                         NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
                                 .id(notification.getId())
@@ -127,13 +127,13 @@ public class NotificationService {
                 }
 
             } else if (type == NotificationType.OUTBID) {
-                List<RedisBid> allBidsList = redisBidRepository.findByAuctionIdOrderByBidAmountDesc(auctionId);
-                List<RedisBid> myBidsList = redisBidRepository.findByAuctionIdAndUserIdOrderByBidAmountDesc(auctionId,
-                        userId);
+                List<Bid> allBidsList = bidRepository.findByAuctionId(auctionId);
+                Optional<Bid> myBidOptional = bidRepository.findFirstByUserIdAndAuctionIdOrderByBidAmountDesc(userId,
+                        auctionId);
 
-                if (auctionOptional.isPresent() && !myBidsList.isEmpty() && !allBidsList.isEmpty()) {
+                if (auctionOptional.isPresent() && myBidOptional.isPresent() && !allBidsList.isEmpty()) {
                     Auction auction = auctionOptional.get();
-                    RedisBid myBid = myBidsList.get(0); // 내 입찰가
+                    Bid myBid = myBidOptional.get(); // 내 입찰가
 
                     NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
                             .id(notification.getId())
@@ -200,13 +200,12 @@ public class NotificationService {
             } else if (type == NotificationType.ENDED || type == NotificationType.ENDED_TIME) {
                 if (auctionOptional.isPresent()) {
                     Auction auction = auctionOptional.get();
-                    List<RedisBid> myBidsList = redisBidRepository.findByAuctionIdAndUserIdOrderByBidAmountDesc(
-                            auctionId,
-                            userId);
-                    MyBidInfoDTO myBidInfoDTO = myBidsList.isEmpty()
+                    Optional<Bid> myBidOptional = bidRepository.findFirstByUserIdAndAuctionIdOrderByBidAmountDesc(
+                            userId, auctionId);
+                    MyBidInfoDTO myBidInfoDTO = myBidOptional.isEmpty()
                             ? null
                             : MyBidInfoDTO.builder()
-                                    .bidAmount(myBidsList.get(0).getBidAmount())
+                                    .bidAmount(myBidOptional.get().getBidAmount())
                                     .build();
 
                     NotificationResponseDTO notificationResponseDTO = NotificationResponseDTO.builder()
