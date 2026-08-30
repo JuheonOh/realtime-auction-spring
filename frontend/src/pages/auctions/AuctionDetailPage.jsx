@@ -8,7 +8,6 @@ import LoadingSpinner from "@components/common/loading/LoadingSpinner";
 import ImageSlider from "@components/common/sliders/ImageSlider";
 import BidChart from "@components/features/auction/BidChart";
 import { SET_ACCESS_TOKEN, SET_INFO } from "@data/redux/store/User";
-import { clearCookie } from "@data/storage/Cookie";
 import useInterval from "@hooks/useInterval";
 import { IMAGE_URL, WS_BASE_URL } from "@utils/constant";
 import { addCommas, formatNumberInput } from "@utils/formatNumber";
@@ -56,7 +55,9 @@ export default function AuctionDetailPage() {
   const [isHighestBidder, setIsHighestBidder] = useState(false);
 
   const socketRef = useRef(null);
+  const socketAuthenticatedRef = useRef(false);
   const userIdRef = useRef(null);
+  const seenEventIdsRef = useRef(new Set());
 
   const navigate = useNavigate();
 
@@ -70,7 +71,6 @@ export default function AuctionDetailPage() {
         userIdRef.current = userInfo.data.id;
       } catch (err) {
         console.error(err);
-        clearCookie();
       }
     };
 
@@ -123,6 +123,8 @@ export default function AuctionDetailPage() {
     if (!auctionId) return;
 
     const retryInterval = 3000; // 재시도 간격 3초
+    let reconnectTimer;
+    let isActive = true;
 
     const setupWebSocket = () => {
       try {
@@ -132,18 +134,27 @@ export default function AuctionDetailPage() {
         }
 
         socketRef.current = new WebSocket(`${WS_BASE_URL}/ws/auctions/${auctionId}`);
+        socketAuthenticatedRef.current = false;
 
-        socketRef.current.onopen = (e) => {
+        socketRef.current.onopen = () => {
           console.log("경매 입찰 소켓 연결 성공");
+          socketRef.current.send(
+            JSON.stringify({
+              type: "auth",
+              accessToken: user.accessToken,
+              data: {},
+            }),
+          );
         };
 
         socketRef.current.onclose = (e) => {
           console.log("경매 입찰 소켓 연결 종료");
+          socketAuthenticatedRef.current = false;
 
           // 정상적인 종료가 아닌 경우 재연결 시도
-          if (!e.wasClean) {
+          if (isActive && !e.wasClean) {
             console.log(`${retryInterval / 1000}초 후 재연결 시도`);
-            setTimeout(() => {
+            reconnectTimer = setTimeout(() => {
               setupWebSocket();
             }, retryInterval);
           }
@@ -154,24 +165,42 @@ export default function AuctionDetailPage() {
         console.error("웹소켓 설정 중 에러: ", err);
 
         // 입찰 소켓 재연결
-        setTimeout(() => {
-          setupWebSocket();
-        }, retryInterval);
+        if (isActive) {
+          reconnectTimer = setTimeout(() => {
+            setupWebSocket();
+          }, retryInterval);
+        }
       }
     };
 
     setupWebSocket();
-  }, [auctionId]);
+
+    return () => {
+      isActive = false;
+      clearTimeout(reconnectTimer);
+      socketAuthenticatedRef.current = false;
+      socketRef.current?.close();
+    };
+  }, [auctionId, user.accessToken]);
 
   useEffect(() => {
     socketRef.current.onmessage = async (e) => {
       const res = JSON.parse(e.data);
+      if (res.eventId) {
+        const seenEventIds = seenEventIdsRef.current;
+        if (seenEventIds.has(res.eventId)) return;
+        if (seenEventIds.size >= 1000) {
+          seenEventIds.delete(seenEventIds.values().next().value);
+        }
+        seenEventIds.add(res.eventId);
+      }
       const type = res.type;
       const status = res.status;
       const data = res.data;
 
       // 본인의 액세스 토큰이 만료되었을 때 (token_expired)
       if (type === "token_expired") {
+        socketAuthenticatedRef.current = false;
         try {
           // 리프레쉬 토큰으로 새 액세스 토큰 갱신
           const newAccessToken = await httpClientManager.refreshAccessToken();
@@ -179,11 +208,7 @@ export default function AuctionDetailPage() {
           // 새 액세스 토큰으로 user store 업데이트
           dispatch(SET_ACCESS_TOKEN(newAccessToken));
 
-          const message = {
-            type: "bid",
-            data: { bidAmount },
-            accessToken: newAccessToken,
-          };
+          const message = { type: "auth", accessToken: newAccessToken, data: {} };
 
           // 새 액세스 토큰으로 웹소켓 메시지 재전송
           socketRef.current.send(JSON.stringify(message));
@@ -191,6 +216,14 @@ export default function AuctionDetailPage() {
           console.log(err);
         }
 
+        return;
+      }
+
+      if (type === "auth") {
+        socketAuthenticatedRef.current = status === 200;
+        if (status === 200) {
+          setInValid({});
+        }
         return;
       }
 
@@ -280,11 +313,12 @@ export default function AuctionDetailPage() {
 
       // error 데이터 받았을 때 (error)
       if (type === "error") {
+        socketAuthenticatedRef.current = false;
         setInValid({ bidAmount: data.message });
         setShowBidSuccess(false);
       }
     };
-  }, [auctionId, user.accessToken, dispatch, bidAmount]);
+  }, [auctionId, user.accessToken, dispatch]);
 
   // 초기 데이터 불러오기
   useEffect(() => {
@@ -377,10 +411,14 @@ export default function AuctionDetailPage() {
       return;
     }
 
+    if (socketRef.current?.readyState !== WebSocket.OPEN || !socketAuthenticatedRef.current) {
+      setInValid({ bidAmount: "웹소켓 인증이 완료될 때까지 기다려주세요." });
+      return;
+    }
+
     try {
       const message = {
         type: "bid",
-        accessToken: user.accessToken,
         data: {
           bidAmount,
         },

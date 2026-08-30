@@ -4,9 +4,11 @@ import com.inhatc.auction.domain.notification.entity.NotificationType;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.extern.jackson.Jacksonized;
 
 @Getter
 @Builder
+@Jacksonized
 public class NotificationResponseDTO {
     private Long id;
     private NotificationType type;

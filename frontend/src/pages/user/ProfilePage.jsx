@@ -1,6 +1,5 @@
 import { logout } from "@apis/AuthAPI";
 import { LOGOUT } from "@data/redux/store/User";
-import { clearCookie } from "@data/storage/Cookie";
 import { Bell, Clock, DollarSign, Lock, Mail, Phone, Settings, User } from "lucide-react";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -24,11 +23,13 @@ export default function ProfilePage() {
     { id: 2, name: "Luxury Handbag", currentBid: 2500000, endDate: "2023-06-30" },
   ];
 
-  const handleLogout = () => {
-    logout();
-    dispatch(LOGOUT());
-    clearCookie();
-    navigate("/");
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      dispatch(LOGOUT());
+      navigate("/");
+    }
   };
 
   return (

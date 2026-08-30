@@ -5,6 +5,8 @@ import java.util.HashMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.lang.NonNull;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.inhatc.auction.domain.auction.dto.request.AuctionRequestDTO;
 import com.inhatc.auction.domain.auction.dto.response.AuctionDetailResponseDTO;
 import com.inhatc.auction.domain.auction.service.AuctionService;
+import com.inhatc.auction.domain.user.entity.CustomUserDetails;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -50,8 +53,12 @@ public class AuctionController {
 
     // 경매 생성
     @PostMapping
-    public ResponseEntity<?> createAuction(@Valid @ModelAttribute AuctionRequestDTO requestDTO) {
-        Long auctionId = this.auctionService.createAuction(requestDTO);
+    public ResponseEntity<?> createAuction(@AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @ModelAttribute AuctionRequestDTO requestDTO) {
+        if (userDetails == null || userDetails.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+        }
+        Long auctionId = this.auctionService.createAuction(userDetails.getId(), requestDTO);
 
         HashMap<String, Long> response = new HashMap<>();
         response.put("auctionId", auctionId);

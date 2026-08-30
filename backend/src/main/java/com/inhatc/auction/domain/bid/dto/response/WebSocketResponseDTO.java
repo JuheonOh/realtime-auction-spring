@@ -1,5 +1,6 @@
 package com.inhatc.auction.domain.bid.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.inhatc.auction.domain.transaction.entity.TransactionStatus;
 
 import lombok.Builder;
@@ -8,6 +9,8 @@ import lombok.Getter;
 @Getter
 @Builder
 public class WebSocketResponseDTO {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String eventId;
     private String type;
     private int status;
     private Object data;

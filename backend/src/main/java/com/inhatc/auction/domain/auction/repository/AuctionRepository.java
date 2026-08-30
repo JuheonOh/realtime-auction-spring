@@ -5,12 +5,15 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.lang.NonNull;
 
 import com.inhatc.auction.domain.auction.entity.Auction;
 import com.inhatc.auction.domain.auction.entity.AuctionStatus;
+
+import jakarta.persistence.LockModeType;
 
 public interface AuctionRepository extends JpaRepository<Auction, Long> {
 
@@ -60,4 +63,8 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
 
         @Query("SELECT a FROM Auction a LEFT JOIN FETCH a.images WHERE a.id = :id")
         Optional<Auction> findByIdWithImages(@Param("id") Long id);
+
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("SELECT a FROM Auction a WHERE a.id = :auctionId")
+        Optional<Auction> findByIdForUpdate(@Param("auctionId") Long auctionId);
 }

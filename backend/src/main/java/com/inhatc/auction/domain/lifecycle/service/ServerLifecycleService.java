@@ -25,7 +25,6 @@ public class ServerLifecycleService {
     private final ServerLifecycleRepository serverLifecycleRepository;
     private final AuctionRepository auctionRepository;
     private final FileUtils fileUtils;
-    // private final BidMigrationService bidMigrationService;
 
     @Transactional
     public void handleStartup() {

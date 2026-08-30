@@ -3,3 +3,12 @@
 k6-test
 *.log
 .idea
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore

@@ -2,6 +2,7 @@ package com.inhatc.auction.global.config;
 
 import java.util.Objects;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -18,8 +19,12 @@ import lombok.RequiredArgsConstructor;
 public class WebSocketConfig implements WebSocketConfigurer {
     private final WebSocketHandler webSocketHandler;
 
+    @Value("${app.security.frontend-origin:${FRONTEND_ORIGIN:http://localhost:3000}}")
+    private String frontendOrigin;
+
     @Override
     public void registerWebSocketHandlers(@NonNull WebSocketHandlerRegistry registry) {
-        registry.addHandler(Objects.requireNonNull(webSocketHandler), "/ws/auctions/{auctionId}").setAllowedOrigins("*");
+        registry.addHandler(Objects.requireNonNull(webSocketHandler), "/ws/auctions/{auctionId}")
+                .setAllowedOrigins(frontendOrigin);
     }
 }
